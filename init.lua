@@ -1,9 +1,17 @@
 -- auto install vim-plug and plugins, if not found
 local data_dir = vim.fn.stdpath('data')
+  print("I would have installed the script now")
+end
+print(confirmation)
 if vim.fn.empty(vim.fn.glob(data_dir .. '/site/autoload/plug.vim')) == 1 then
-  vim.cmd('silent !curl -fLo ' .. data_dir .. '/site/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim')
-  vim.o.runtimepath = vim.o.runtimepath
-  vim.cmd('autocmd VimEnter * PlugInstall --sync | source $MYVIMRC')
+  local vim_plug_autoload_cmd = 'silent !curl -fLo ' .. data_dir .. '/site/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+  local confirmation_message = "This will install vim plug into auto load:\n" .. vim_plug_autoload_cmd
+  local confirmation = vim.fn.confirm(confirmation_message, "&Yes\n&No", 2)
+  if (confirmation == 1) then
+    vim.cmd(vim_plug_autoload_cmd)
+    vim.o.runtimepath = vim.o.runtimepath
+    vim.cmd('autocmd VimEnter * PlugInstall --sync | source $MYVIMRC')
+  end
 end
 
 require('config.plugins')
