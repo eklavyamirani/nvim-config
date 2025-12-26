@@ -16,6 +16,7 @@ Plug('windwp/nvim-autopairs') --autopairs
 Plug('lewis6991/gitsigns.nvim') --git
 Plug('numToStr/Comment.nvim') --easier comments
 Plug('norcalli/nvim-colorizer.lua') --color highlight
+Plug('MeanderingProgrammer/render-markdown.nvim') --render md inline
 
 vim.call('plug#end')
 

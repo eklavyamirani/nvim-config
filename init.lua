@@ -11,11 +11,13 @@ if vim.fn.empty(vim.fn.glob(data_dir .. '/site/autoload/plug.vim')) == 1 then
   end
 end
 
+-- Optimized module loader, improves startup performance
+vim.loader.enable();
 require('config.plugins')
 
 -- Basic settings -- 
 vim.o.number = true  -- Show line numbers
-vim.o.relativenumber = false -- Use relative line numbers
+vim.o.relativenumber = true -- Use relative line numbers
 vim.g.mapleader = ' '    -- Set space as leader key
 vim.g.maplocalleader = ' '  -- Optional: Set space as local leader key (for buffer-local mappings)
 vim.o.undofile = true
