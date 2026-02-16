@@ -46,5 +46,7 @@ vim.opt.cursorline = true
 vim.opt.scrolloff = 10
 
 -- keymaps --
-vim.api.nvim_set_keymap('n', '<leader>e', ':lua MiniFiles.open()<CR>', { noremap = trdf;ue, silent = true })
-vim.keymap.set('n',"<leader>t", ":NvimTreeToggle<CR>") -- open nvim tree file explorer
+vim.api.nvim_set_keymap('n', '<leader>ed', '<Cmd>lua MiniFiles.open(vim.api.nvim_buf_get_name(0))<CR>', { noremap = trdf;ue, silent = true })
+vim.keymap.set('n', '<leader>ei', '<Cmd>edit $MYVIMRC<CR>', { desc = 'init.lua'})
+-- disable. trying out mini.files instead
+-- vim.keymap.set('n',"<leader>t", ":NvimTreeToggle<CR>") -- open nvim tree file explorer

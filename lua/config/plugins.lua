@@ -5,13 +5,14 @@ vim.call('plug#begin')
 
 Plug('nvim-lualine/lualine.nvim') --statusline
 Plug('nvim-tree/nvim-web-devicons')
-Plug('echasnovski/mini.nvim') -- file explorer
+Plug('nvim-mini/mini.files', { ['branch'] = 'stable'} ) -- file explorer
+Plug('nvim-mini/mini.diff', { ['branch'] = 'stable'} ) -- diff helper
 Plug('catppuccin/nvim', { ['as'] = 'catppuccin' }) --colorscheme
-Plug('uZer/pywal16.nvim', { [ 'as' ] = 'pywal16' }) --or, pywal colorscheme
 Plug('folke/which-key.nvim') --mappings popup
 Plug('nvim-treesitter/nvim-treesitter') --improved syntax
 Plug('mfussenegger/nvim-lint') --async linter
-Plug('nvim-tree/nvim-tree.lua') --file explorer
+-- disabling, trying out mini files instead
+-- Plug('nvim-tree/nvim-tree.lua') --file explorer
 Plug('windwp/nvim-autopairs') --autopairs 
 Plug('lewis6991/gitsigns.nvim') --git
 Plug('numToStr/Comment.nvim') --easier comments
@@ -22,10 +23,11 @@ vim.call('plug#end')
 
 -- setup plugins
 require('mini.files').setup()
-require('nvim-tree').setup({
-  sync_root_with_cwd = true,
-  update_cwd = true,
-})
+require('mini.diff').setup()
+-- require('nvim-tree').setup({
+--   sync_root_with_cwd = true,
+--   update_cwd = true,
+-- })
 require('nvim-autopairs').setup()
 require('lualine').setup()
 require('gitsigns').setup()
