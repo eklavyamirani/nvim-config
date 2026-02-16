@@ -29,8 +29,6 @@ require('mini.diff').setup()
 --   sync_root_with_cwd = true,
 --   update_cwd = true,
 -- })
--- TODO: do a git check against remote to see if new config is available
--- and create notification to update config
 require('mini.notify').setup()
 require('nvim-autopairs').setup()
 require('lualine').setup()

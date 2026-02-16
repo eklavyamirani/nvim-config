@@ -1,11 +1,13 @@
 -- auto install vim-plug and plugins, if not found
 local data_dir = vim.fn.stdpath('data')
+local config_dir = vim.fn.stdpath('config')
 if vim.fn.empty(vim.fn.glob(data_dir .. '/site/autoload/plug.vim')) == 1 then
   local vim_plug_autoload_cmd = 'silent !curl -fLo ' .. data_dir .. '/site/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
   local confirmation_message = "This will install vim plug into auto load:\n" .. vim_plug_autoload_cmd
   local confirmation = vim.fn.confirm(confirmation_message, "&Yes\n&No", 2)
   if (confirmation == 1) then
     vim.cmd(vim_plug_autoload_cmd)
+    -- @todo_eky: what was the context of this line?
     vim.o.runtimepath = vim.o.runtimepath
     vim.cmd('autocmd VimEnter * PlugInstall --sync | source $MYVIMRC')
   end
@@ -14,6 +16,12 @@ end
 -- Optimized module loader, improves startup performance
 vim.loader.enable();
 require('config.plugins')
+local notify = require('mini.notify')
+-- @todo_eky wrap into autocmd
+if (vim.fn.trim(vim.fn.system('git -C ' .. config_dir .. ' pull --dry-run')) ~= '') then
+  local notificationId = notify.add('Remote config updated', 'WARN', 'Comment')
+  vim.defer_fn(function() MiniNotify.remove(notificationId) end, 1000)
+end
 
 -- Basic settings -- 
 vim.o.number = true  -- Show line numbers
