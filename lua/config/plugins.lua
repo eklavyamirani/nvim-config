@@ -7,6 +7,7 @@ Plug('nvim-lualine/lualine.nvim') --statusline
 Plug('nvim-tree/nvim-web-devicons')
 Plug('nvim-mini/mini.files', { ['branch'] = 'stable'} ) -- file explorer
 Plug('nvim-mini/mini.diff', { ['branch'] = 'stable'} ) -- diff helper
+Plug('nvim-mini/mini.notify', { ['branch'] = 'stable'} ) -- notifications
 Plug('catppuccin/nvim', { ['as'] = 'catppuccin' }) --colorscheme
 Plug('folke/which-key.nvim') --mappings popup
 Plug('nvim-treesitter/nvim-treesitter') --improved syntax
@@ -28,9 +29,12 @@ require('mini.diff').setup()
 --   sync_root_with_cwd = true,
 --   update_cwd = true,
 -- })
+-- TODO: do a git check against remote to see if new config is available
+-- and create notification to update config
+require('mini.notify').setup()
 require('nvim-autopairs').setup()
 require('lualine').setup()
-require('gitsigns').setup()
+-- require('gitsigns').setup()
 require("Comment").setup({
   ---Add a space b/w comment and the line
   padding = true,
