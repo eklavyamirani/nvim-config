@@ -42,8 +42,14 @@ setup('render-markdown', {
     icons = {},          -- keep raw "#", "##", "###" instead of nerd-font icons
     width = 'block',     -- don't stretch heading background across the window
     backgrounds = {},    -- no background highlight on headings
-    -- foregrounds intentionally left at defaults: each heading level keeps a
-    -- distinct color so hierarchy is still visible, just without shading.
+    -- Per-level border. Only h1 gets a horizontal rule above and below for a
+    -- strong "major section" feel; h2-h6 stay distinguished by foreground
+    -- color alone (defaults).
+    border = { true, false, false, false, false, false },
+    border_virtual = true,  -- render via virtual lines; don't require blank
+                            -- lines around the heading in the source file.
+    above = '═',
+    below = '═',
   },
   code = {
     enabled = false,     -- no decoration; treesitter still syntax-highlights
