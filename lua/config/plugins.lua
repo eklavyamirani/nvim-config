@@ -36,7 +36,24 @@ setup('nvim-autopairs')
 setup('lualine')
 setup('which-key')
 setup('colorizer')
-setup('render-markdown')
+setup('render-markdown', {
+  heading = {
+    sign = false,        -- no sign-column glyph
+    icons = {},          -- keep raw "#", "##", "###" instead of nerd-font icons
+    width = 'block',     -- don't stretch heading background across the window
+    backgrounds = {},    -- no background highlight on headings
+    -- foregrounds intentionally left at defaults: each heading level keeps a
+    -- distinct color so hierarchy is still visible, just without shading.
+  },
+  code = {
+    enabled = false,     -- no decoration; treesitter still syntax-highlights
+                         -- the contents of fenced ```lang blocks via injection
+  },
+  bullet = {
+    icons = { '•', '◦', '▪', '▫' },  -- plain unicode bullets per nesting level
+  },
+  -- dash, quote, checkbox, table all keep defaults — they're already low-key.
+})
 setup('code-review')
 setup('fzf-lua')
 
