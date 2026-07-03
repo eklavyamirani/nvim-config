@@ -3,6 +3,11 @@ local config_dir = vim.fn.stdpath('config')
 -- Optimized module loader, improves startup performance.
 vim.loader.enable()
 vim.o.termguicolors = true  -- must be set before colorscheme
+-- Leader must be set BEFORE plugins load, because vim.keymap.set resolves
+-- <leader> at call time. Any plugin that registers a <leader>* mapping during
+-- require('config.plugins') would otherwise capture the default backslash.
+vim.g.mapleader = ' '
+vim.g.maplocalleader = ' '
 require('config.plugins')
 
 local notify = require('mini.notify')
@@ -28,8 +33,6 @@ vim.api.nvim_create_autocmd('VimEnter', {
 -- Basic settings --
 vim.o.number = true            -- Show line numbers
 vim.o.relativenumber = true    -- Use relative line numbers
-vim.g.mapleader = ' '          -- Set space as leader key
-vim.g.maplocalleader = ' '     -- Local leader (for buffer-local mappings)
 vim.o.undofile = true
 vim.o.clipboard = 'unnamedplus'
 vim.o.title = true
@@ -54,3 +57,5 @@ vim.keymap.set('n', '<leader>ed', function()
   MiniFiles.open(vim.api.nvim_buf_get_name(0))
 end, { desc = 'mini.files' })
 vim.keymap.set('n', '<leader>ei', '<Cmd>edit $MYVIMRC<CR>', { desc = 'init.lua' })
+vim.keymap.set('n', '<leader>?', '<Cmd>tab drop ' .. config_dir .. '/cheatsheet.md<CR>',
+  { desc = 'Open cheatsheet in a tab' })

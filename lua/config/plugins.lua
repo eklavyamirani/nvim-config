@@ -18,6 +18,7 @@ vim.pack.add({
   { src = 'https://github.com/nvim-lua/plenary.nvim' },
   { src = 'https://github.com/eklavyamirani/code-review.nvim' },
   { src = 'https://github.com/ibhagwan/fzf-lua' },
+  { src = 'https://github.com/sindrets/diffview.nvim' },
 })
 
 -- Helper for plugins whose only setup is `require('x').setup()`.
@@ -62,6 +63,36 @@ setup('render-markdown', {
 })
 setup('code-review')
 setup('fzf-lua')
+setup('diffview', {
+  use_icons = false,
+  signs = { fold_closed = '+', fold_open = '-', done = '✓' },
+  view = {
+    default = { winbar_info = false },
+    merge_tool = { layout = 'diff3_mixed' },
+  },
+})
+vim.keymap.set('n', '<leader>dv', '<cmd>DiffviewOpen<cr>',       { desc = 'Diffview: open (working tree)' })
+vim.keymap.set('n', '<leader>dm', function()
+  local out = vim.fn.systemlist({ 'git', 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD' })
+  local base
+  if vim.v.shell_error == 0 and out[1] and out[1] ~= '' then
+    base = out[1]  -- e.g. "origin/main"
+  else
+    for _, candidate in ipairs({ 'origin/main', 'origin/master', 'main', 'master' }) do
+      vim.fn.system({ 'git', 'rev-parse', '--verify', '--quiet', candidate })
+      if vim.v.shell_error == 0 then base = candidate; break end
+    end
+  end
+  if not base then
+    vim.notify('Diffview: could not resolve default branch. Run `git remote set-head origin --auto`.', vim.log.levels.ERROR)
+    return
+  end
+  vim.cmd('DiffviewOpen ' .. base .. '...HEAD')
+end, { desc = 'Diffview: review branch vs default' })
+vim.keymap.set('n', '<leader>dh', '<cmd>DiffviewFileHistory %<cr>', { desc = 'Diffview: file history' })
+vim.keymap.set('n', '<leader>dH', '<cmd>DiffviewFileHistory<cr>',   { desc = 'Diffview: branch history' })
+vim.keymap.set('n', '<leader>dc', '<cmd>DiffviewClose<cr>',      { desc = 'Diffview: close' })
+vim.keymap.set('n', '<leader>df', '<cmd>DiffviewToggleFiles<cr>', { desc = 'Diffview: toggle file panel' })
 
 -- Treesitter: highlight + indent for installed parsers.
 local ok_ts, ts = pcall(require, 'nvim-treesitter.configs')
