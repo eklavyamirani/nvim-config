@@ -59,3 +59,40 @@ end, { desc = 'mini.files' })
 vim.keymap.set('n', '<leader>ei', '<Cmd>edit $MYVIMRC<CR>', { desc = 'init.lua' })
 vim.keymap.set('n', '<leader>?', '<Cmd>tab drop ' .. config_dir .. '/cheatsheet.md<CR>',
   { desc = 'Open cheatsheet in a tab' })
+
+-- AI clipboard bridge: format the current selection (or whole buffer) with a
+-- `@path:startline-endline` header and copy to the system clipboard. Paste
+-- into your AI CLI tab (claude, copilot, ...) with Cmd+V.
+local function ai_yank(mode)
+  local buf = vim.api.nvim_buf_get_name(0)
+  local rel = vim.fn.fnamemodify(buf, ':.')
+  if rel == '' then rel = '[no name]' end
+  local ft = vim.bo.filetype
+  local start_line, end_line, lines
+  if mode == 'buffer' then
+    start_line, end_line = 1, vim.api.nvim_buf_line_count(0)
+    lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  elseif mode == 'line' then
+    start_line = vim.fn.line('.')
+    end_line   = start_line + math.max(vim.v.count1 - 1, 0)
+    end_line   = math.min(end_line, vim.api.nvim_buf_line_count(0))
+    lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
+  else
+    -- 'v' = anchor of current visual selection, '.' = cursor position.
+    -- Using '< / '> here would be stale — those marks only update when
+    -- visual mode ends, but this callback fires while still in visual mode.
+    local a = vim.fn.getpos('v')[2]
+    local b = vim.fn.getpos('.')[2]
+    start_line = math.min(a, b)
+    end_line   = math.max(a, b)
+    lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
+  end
+  local header = ('@%s:%d-%d'):format(rel, start_line, end_line)
+  local body   = ('```%s\n%s\n```'):format(ft, table.concat(lines, '\n'))
+  vim.fn.setreg('+', header .. '\n' .. body .. '\n')
+  vim.notify(('AI: yanked %s (%d lines)'):format(header, end_line - start_line + 1))
+end
+
+vim.keymap.set('x', '<leader>ay', function() ai_yank('visual') end, { desc = 'AI: yank selection to clipboard' })
+vim.keymap.set('n', '<leader>ay', function() ai_yank('line') end,   { desc = 'AI: yank current line to clipboard' })
+vim.keymap.set('n', '<leader>aY', function() ai_yank('buffer') end, { desc = 'AI: yank whole buffer to clipboard' })

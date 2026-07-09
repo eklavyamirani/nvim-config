@@ -89,6 +89,33 @@ Keywords: resize, zoom, fullscreen, maximize, split, window, pane.
 
 ---
 
+## AI CLI Bridge (clipboard)
+
+Send code from nvim to an AI CLI (Copilot CLI, Claude Code, ...) running in another terminal tab.
+Keywords: ai, copilot, claude, chat, ask, reference, selection, share.
+
+**Workflow:**
+1. `Cmd+T` in Terminal.app for a new tab; run `copilot` or `claude` there.
+2. In nvim, select code (or none for whole buffer) and yank with the keymaps below.
+3. `Cmd+\`` back to the AI tab, `Cmd+V`, hit enter.
+
+| Key | Action |
+| --- | --- |
+| `<leader>ay` (visual mode) | Yank selection + `@path:lines` header to system clipboard |
+| `<leader>ay` (normal mode) | Yank current line + `@path:line` header (prefix count: `5<leader>ay` = 5 lines) |
+| `<leader>aY` (normal mode) | Yank whole buffer + `@path:lines` header |
+
+The formatted paste looks like:
+```
+@src/foo.lua:10-25
+```lua
+... code ...
+```
+```
+The `@path` reference lets both `copilot` and `claude` read the file themselves for extra context.
+
+---
+
 ## Folds (show / hide collapsed lines)
 
 Keywords: fold, unfold, collapse, expand, diff folds, show full file.
