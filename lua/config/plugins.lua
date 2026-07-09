@@ -8,7 +8,7 @@ vim.pack.add({
   { src = 'https://github.com/nvim-mini/mini.notify',   version = 'stable' },
   { src = 'https://github.com/catppuccin/nvim',         name = 'catppuccin' },
   { src = 'https://github.com/folke/which-key.nvim' },
-  { src = 'https://github.com/nvim-treesitter/nvim-treesitter' },
+  { src = 'https://github.com/nvim-treesitter/nvim-treesitter',               version = 'master' },
   { src = 'https://github.com/mfussenegger/nvim-lint' },
   { src = 'https://github.com/windwp/nvim-autopairs' },
   { src = 'https://github.com/lewis6991/gitsigns.nvim' },
@@ -94,7 +94,9 @@ vim.keymap.set('n', '<leader>dH', '<cmd>DiffviewFileHistory<cr>',   { desc = 'Di
 vim.keymap.set('n', '<leader>dc', '<cmd>DiffviewClose<cr>',      { desc = 'Diffview: close' })
 vim.keymap.set('n', '<leader>df', '<cmd>DiffviewToggleFiles<cr>', { desc = 'Diffview: toggle file panel' })
 
--- Treesitter: highlight + indent for installed parsers.
+-- Treesitter (v1 / master branch) — parsers ship pre-generated, no tree-sitter
+-- CLI or node needed. Highlight + indent only; text-object plugin skipped
+-- because it doesn't fully support nvim 0.12 on this branch.
 local ok_ts, ts = pcall(require, 'nvim-treesitter.configs')
 if ok_ts then
   ts.setup({

@@ -31,6 +31,45 @@
 
 ---
 
+## Selecting a Function (no plugin)
+
+Vim's built-in tricks to grab a whole function without treesitter text objects.
+Keywords: function, select function, whole function, brace, %, matchit, text object.
+
+| Sequence | Selects |
+| --- | --- |
+| `V%` | From current line to matching `{` / `}` / `(` / `)` / `[` / `]` (works well in C-family, JS; Lua `function`/`end` needs the built-in `matchit` plugin) |
+| `Vj...j` | Visual-line then extend downward manually — language-agnostic fallback |
+| `V]]` / `V][` | Extend to next section start / end (varies by filetype) |
+
+Combine with `<leader>ay` after selecting.
+
+For semantic `af`/`if`/`ac`/`ic` text objects you'd need `nvim-treesitter-textobjects`, but on nvim 0.12 that requires `brew install tree-sitter` (v2 branch). Deferred.
+
+---
+
+## Capture Command Output (`:redir`)
+
+**Usage:** Capture the *messages* / output of one or more `:` commands into a register or file.
+Keywords: redir, redirect, capture, copy command output, messages, save output.
+
+| Command | Action |
+| --- | --- |
+| `:redir @+` \| run command \| `:redir END` | Capture output to system clipboard (paste with `Cmd+V`) |
+| `:redir @a` \| run command \| `:redir END` | Capture output to register `a` (paste with `"ap`) |
+| `:redir > /tmp/out.txt` \| run command \| `:redir END` | Capture to a file |
+| `:redir >> file` | Append instead of overwrite |
+
+**Note:** commands like `:Inspect` don't accept `|`-chaining (no `-bar` attribute), so run the three lines separately:
+```
+:redir @+
+:Inspect
+:redir END
+```
+For `:Inspect` specifically, `:InspectTree` opens the whole tree as a real buffer — use `<C-w>w` to jump in, then `<leader>aY` to yank it.
+
+---
+
 ## Code Review (diffview.nvim)
 
 **Workflow:** in your shell, `git fetch origin && git checkout <pr-branch>`, then open nvim.
