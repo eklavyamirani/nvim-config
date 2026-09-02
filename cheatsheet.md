@@ -152,6 +152,8 @@ The formatted paste looks like:
 ```
 ```
 The `@path` reference lets both `copilot` and `claude` read the file themselves for extra context.
+Each line in the body is prefixed with its buffer line number, so the assistant can refer to lines unambiguously.
+Inside diffview the header resolves to the real file path, with a `(staged)` or `(at <sha>)` suffix when the pane is not the working file.
 
 ---
 

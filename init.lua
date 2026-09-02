@@ -61,12 +61,42 @@ vim.keymap.set('n', '<leader>?', '<Cmd>tab drop ' .. config_dir .. '/cheatsheet.
   { desc = 'Open cheatsheet in a tab' })
 
 -- AI clipboard bridge: format the current selection (or whole buffer) with a
--- `@path:startline-endline` header and copy to the system clipboard. Paste
--- into your AI CLI tab (claude, copilot, ...) with Cmd+V.
-local function ai_yank(mode)
-  local buf = vim.api.nvim_buf_get_name(0)
-  local rel = vim.fn.fnamemodify(buf, ':.')
+-- `@path:startline-endline` header, line-numbered body, and copy to the system
+-- clipboard. Paste into your AI CLI tab (claude, copilot, ...) with Cmd+V.
+
+-- Resolve a buffer to a `@`-mentionable path plus an optional revision label.
+-- Diffview buffers are named `diffview://<gitdir>/<rev>/<path>`, which no
+-- assistant can open, so ask diffview's view model for the real path instead.
+local function ai_location(bufnr)
+  if bufnr == 0 then bufnr = vim.api.nvim_get_current_buf() end
+  local name = vim.api.nvim_buf_get_name(bufnr)
+  if name:sub(1, 11) == 'diffview://' then
+    local ok, lib = pcall(require, 'diffview.lib')
+    local view = ok and lib.get_current_view()
+    local layout = view and view.cur_layout
+    for _, win in ipairs(layout and layout.windows or {}) do
+      local file = win.file
+      if file and file.bufnr == bufnr then
+        local RevType = require('diffview.vcs.rev').RevType
+        local rev
+        if file.rev.type == RevType.STAGE then
+          rev = file.rev.stage == 0 and 'staged' or ('stage ' .. file.rev.stage)
+        elseif file.rev.type == RevType.COMMIT then
+          rev = 'at ' .. file.rev:abbrev()
+        elseif file.rev.type == RevType.CUSTOM then
+          rev = 'custom rev'
+        end
+        return vim.fn.fnamemodify(file.absolute_path, ':.'), rev
+      end
+    end
+  end
+  local rel = vim.fn.fnamemodify(name, ':.')
   if rel == '' then rel = '[no name]' end
+  return rel, nil
+end
+
+local function ai_yank(mode)
+  local rel, rev = ai_location(0)
   local ft = vim.bo.filetype
   local start_line, end_line, lines
   if mode == 'buffer' then
@@ -87,7 +117,12 @@ local function ai_yank(mode)
     end_line   = math.max(a, b)
     lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
   end
+  local width = #tostring(end_line)
+  for i, line in ipairs(lines) do
+    lines[i] = ('%' .. width .. 'd  %s'):format(start_line + i - 1, line)
+  end
   local header = ('@%s:%d-%d'):format(rel, start_line, end_line)
+  if rev then header = header .. (' (%s)'):format(rev) end
   local body   = ('```%s\n%s\n```'):format(ft, table.concat(lines, '\n'))
   vim.fn.setreg('+', header .. '\n' .. body .. '\n')
   vim.notify(('AI: yanked %s (%d lines)'):format(header, end_line - start_line + 1))
