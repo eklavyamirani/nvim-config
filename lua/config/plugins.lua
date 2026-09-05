@@ -31,6 +31,7 @@ local function setup(name, opts)
   if type(mod.setup) == 'function' then mod.setup(opts or {}) end
 end
 
+require('config.review_context').setup()
 setup('mini.files')
 setup('mini.notify')
 setup('nvim-autopairs')

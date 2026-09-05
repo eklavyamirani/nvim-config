@@ -130,6 +130,52 @@ Keywords: resize, zoom, fullscreen, maximize, split, window, pane.
 
 ## AI CLI Bridge (clipboard)
 
+### Explain without leaving the diff
+
+Select an unfamiliar expression in Visual mode and press `<leader>ae` (Space,
+then a, then e). In Normal mode it explains the current line; a count includes
+more lines. The explanation appears beside your diff without moving focus.
+Narrow terminals put the support panes below the diff.
+
+| Key / Command | Action |
+| --- | --- |
+| `<leader>ae` | Explain the current line or exact visual selection |
+| `<leader>af` | Focus the explanation to read/scroll/select it |
+| `<leader>aq` | Ask a follow-up about the last explained selection |
+| `<leader>ap` | Pin selected text or the current line into private context notes |
+| `<leader>an` | Edit the pinned context pane; `:w` saves |
+| `<leader>ar` / Enter in a support pane | Return to the captured code position |
+| `<leader>ax` / `q` in a support pane | Close support panes and cancel a pending explanation |
+| `:ReviewContext` | Reopen the last explanation and notes |
+
+The backend defaults to Copilot CLI using its configured model. Authenticate
+with `copilot login` if necessary. To use Claude Code instead, set
+`vim.g.review_context_provider = 'claude'` in `init.lua` (authenticate with
+`claude auth login`). The bridge invokes the executable directly, not your
+shell aliases. It disables assistant tools; the explanation uses the supplied
+selection, up to 25 surrounding lines on either side, and your pinned notes.
+Requests go to the selected assistant provider only when you ask.
+
+Diffview selections use the actual pane contents and its commit/index label.
+An old-side selection never silently becomes the working-tree version.
+Values in explanations are inferred or example values, not executed traces.
+Pinned facts are snapshots with a source location; they do not update as code
+changes. Follow-ups stay attached to the last explained selection; use `ae`
+again when you reach a different blocker.
+
+Notes and the last successful answer live under
+`stdpath('state')/review-context/<repository-id>/`, outside the checkout. Pins
+save immediately; edited notes save with `:w`, on leaving the buffer, or on
+exit. `:ReviewContext` restores the last answer after restarting; the original
+Diffview must be reopened manually to restore a revision that is no longer
+displayed. This support pane works with ordinary file buffers and Diffview;
+the separate CodeReview plugin's custom buffers are not yet adapted.
+
+These private notes do not post PR comments. In an existing `:CodeReview`
+session, `<leader>cc` still opens its comment editor and `<leader>cs` submits.
+
+### Existing clipboard workflow
+
 Send code from nvim to an AI CLI (Copilot CLI, Claude Code, ...) running in another terminal tab.
 Keywords: ai, copilot, claude, chat, ask, reference, selection, share.
 
