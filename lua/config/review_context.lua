@@ -298,6 +298,7 @@ end
 
 function M.setup(opts)
   options = opts or {}
+  require('config.review_route').setup({ command = command })
   for _, mode in ipairs({ 'n', 'x' }) do
     local selected = mode == 'x' and 'visual' or 'line'
     vim.keymap.set(mode, '<leader>ae', function() M.explain(selected) end, { desc = 'Review: explain beside the diff' })

@@ -174,6 +174,72 @@ the separate CodeReview plugin's custom buffers are not yet adapted.
 These private notes do not post PR comments. In an existing `:CodeReview`
 session, `<leader>cc` still opens its comment editor and `<leader>cs` submits.
 
+### Organize files in the Diffview panel
+
+Branch/PR and uncommitted comparisons use Diffview's existing file panel for
+review ordering. Each file has a virtual review label beside its normal Git status:
+`[todo]` = not yet reviewed, `[done]` = done, `[later]` = come back later.
+
+| Key | Action |
+| --- | --- |
+| `<leader>ao` / `:ReviewRoute` | Focus the existing file panel |
+| `g?` in the file panel | Native help, including these review shortcuts |
+| `gs` in the file panel | Cycle default → AI → custom order |
+| `gd` / `ga` / `gc` in the file panel | Select default / saved AI / saved custom order |
+| `i` in default order | Toggle tree/list view; the choice is saved |
+| `J` / `K` in the file panel | Move the selected file down/up and save as custom |
+| `md` in the file panel | Mark done |
+| `ml` in the file panel | Mark come back later |
+| `mn` in the file panel | Reset to not yet reviewed |
+| Enter / `<Tab>` / `<S-Tab>` | Normal Diffview open/next/previous, following your order |
+| `]r` / `[r` | Next/previous file in the same panel order |
+| `go` in the file panel | Generate or replace the saved AI order |
+
+There is no separate route window. Opening the panel does not call an assistant.
+Manual ordering uses a flat list so files can move across directories; the normal
+Git statuses, diff statistics, file paths, and selection behavior stay in the
+native panel. Review labels do not stage files or submit GitHub reviews.
+
+The panel's `Order:` line shows the active choice. Default supports Diffview's
+native tree/list view (`i`), including folder folding and review labels. Its
+tree/list choice is restored when switching back or reopening the comparison.
+AI and custom orders use a flat list and are saved independently; switching never overwrites
+either. `J`/`K` edits the displayed order and saves the result as custom, leaving
+the saved AI order intact. Before any manual edits, custom uses the default order.
+
+All orders, the active choice, and review marks save automatically and privately.
+Committed reviews are scoped to the repository, exact compared commits, and
+visible file set. They survive refreshes and Neovim restarts. Review marks are
+shared across the three orders. Previously saved single orders become custom;
+old read markers become `done`.
+
+`ga` (or cycling into AI with `gs`) reuses the saved suggestion without a new
+request. If none exists, it generates one. `go` explicitly requests a fresh
+suggestion using the same assistant as explanations and bounded diff excerpts,
+then selects the AI order. Review marks, custom order, and every changed file
+are retained. A manual move or switching to a saved order cancels a pending
+suggestion. Suggested dependencies are inferred,
+not proven. Set `vim.g.review_route_priority = 'risk'` before requesting a
+suggestion to prioritize consequential changes instead of understanding.
+
+Use `<leader>dv` / `:DiffviewOpen` for uncommitted changes, or
+`:DiffviewOpen --cached` for staged changes only. The same review shortcuts work.
+Working-tree state is saved per worktree, comparison, and path filter. Adding
+or removing changed files preserves the remaining files' orders and marks.
+
+Staged and unstaged entries have separate marks, including when they share a
+path. `J`/`K` and AI ordering operate within each section. Native staging and
+unstaging still work; an entry newly appearing in another section starts at
+`todo`. On opening or refreshing (`R`), saved diffs are checked asynchronously;
+an entry whose diff changed returns to `todo`, while unchanged entries keep
+their marks. The tree/list choice and all orders survive restarting Neovim.
+
+AI excerpts use each entry's actual comparison (HEAD/index/working tree),
+including untracked files, renames, and deletions. A response is discarded if
+those diffs change during the request. These checks use saved files and the Git
+index; save buffer edits and refresh to update their review state. File-history
+views retain their ordinary behavior.
+
 ### Existing clipboard workflow
 
 Send code from nvim to an AI CLI (Copilot CLI, Claude Code, ...) running in another terminal tab.
