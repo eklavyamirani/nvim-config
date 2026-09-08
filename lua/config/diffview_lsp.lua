@@ -99,7 +99,6 @@ local function jump(view, item, ctx, range, encoding)
     for _, win in ipairs(entry.layout.windows) do
       local file = win.file
       if file and file.path == ctx.path and file.rev.commit == ctx.commit and not file.nulled then
-        local symbol = file.symbol
         view:set_file(entry, true, true)
         later_until(function()
           return not api.nvim_tabpage_is_valid(view.tabpage)
@@ -107,7 +106,7 @@ local function jump(view, item, ctx, range, encoding)
         end, function()
           if api.nvim_get_current_tabpage() ~= view.tabpage then return end
           for _, target in ipairs(view.cur_layout.windows) do
-            if target.file and target.file.symbol == symbol and target.file.path == ctx.path then
+            if target.file and target.file.rev.commit == ctx.commit and target.file.path == ctx.path then
               place(target.id)
               return
             end
