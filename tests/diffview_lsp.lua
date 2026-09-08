@@ -14,6 +14,8 @@ vim.defer_fn(function()
     local map = vim.fn.maparg(key, 'n', false, true)
     assert(map.callback, 'missing ' .. key .. ' mapping')
     map.callback()
+    -- A real keypress yields to queued window/cursor restoration before the next key.
+    vim.wait(100, function() return false end)
   end
   local ok, err = xpcall(function()
     git('init', '-q')
