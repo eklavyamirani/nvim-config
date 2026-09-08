@@ -6,5 +6,6 @@ mkdir -p "$profile_dir"
 if [ ! -L "$profile_dir/nvim" ]; then
   ln -s "$config_root" "$profile_dir/nvim"
 fi
+export NVIM_APPNAME=nvim
 export XDG_CONFIG_HOME="$profile_dir"
 exec nvim "$@"
