@@ -99,19 +99,22 @@ local function jump(view, item, ctx, range, encoding)
     for _, win in ipairs(entry.layout.windows) do
       local file = win.file
       if file and file.path == ctx.path and file.rev.commit == ctx.commit and not file.nulled then
+        view.emitter:once('file_open_post', function(_, opened)
+          if opened ~= entry then return end
+          -- Place the target after Diffview and the review reader restore their views.
+          vim.schedule(function()
+            vim.schedule(function()
+              if api.nvim_get_current_tabpage() ~= view.tabpage or view.cur_entry ~= entry then return end
+              for _, target in ipairs(view.cur_layout.windows) do
+                if target.file and target.file.rev.commit == ctx.commit and target.file.path == ctx.path then
+                  place(target.id)
+                  return
+                end
+              end
+            end)
+          end)
+        end)
         view:set_file(entry, true, true)
-        later_until(function()
-          return not api.nvim_tabpage_is_valid(view.tabpage)
-            or (view.cur_entry == entry and entry.opened and not view._review_loading)
-        end, function()
-          if api.nvim_get_current_tabpage() ~= view.tabpage then return end
-          for _, target in ipairs(view.cur_layout.windows) do
-            if target.file and target.file.rev.commit == ctx.commit and target.file.path == ctx.path then
-              place(target.id)
-              return
-            end
-          end
-        end, 200)
         return
       end
     end
