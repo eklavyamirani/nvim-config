@@ -37,10 +37,28 @@ Diagnostics use basic type checking and no sign-column glyphs. Tagged hint
 dimming, automatic f-string changes, and automatic baseline-file updates are
 disabled. There is no format-on-save or automatic code-action hook.
 
-LSP automatically attaches to real Python file buffers. In Diffview, the native
-`Ctrl-w gf` opens the checked-out version in a new tab for LSP navigation; `gT`
-returns to the comparison. A committed snapshot can differ from that file.
-Historical/scratch diff buffers are not attached as working-tree documents.
+LSP automatically attaches to real Python file buffers. In Diffview's committed
+Python panes, `gd` and `K` query a separate BasedPyright server using a temporary
+Git archive of that pane's commit. The first request prepares the source and
+starts the server asynchronously. Each revision has its own source directory;
+the reviewed files are never presented as working-tree documents to the server.
+
+`gd` selects the target file and revision pane in the current Diffview tab.
+Unchanged files open in a reusable read-only source pane in that tab (`q` closes
+it). `Ctrl-t` returns to the previous definition jump's position. This bridge
+provides definition and hover requests; it does not attach diagnostics, rename,
+or completion to Diffview buffers. Normal files retain the full native LSP setup.
+
+This currently supports committed Git source, including either comparison side.
+Index/conflict/custom snapshots, definitions outside the archived repository,
+submodule contents, and files excluded by Git's `export-ignore` are not supported.
+The archive does not reproduce historical installed Python dependencies. Requests
+are cancelled if the displayed source differs from its archived copy. Temporary
+archives are session-local and disappear with Neovim's temporary directory.
+
+For working-tree navigation, Diffview's native `Ctrl-w gf` opens the checked-out
+version in a new tab; `gT` returns to the comparison. That file may differ from
+the reviewed commit.
 
 References: [Neovim LSP](https://neovim.io/doc/user/lsp/),
 [BasedPyright installation](https://docs.basedpyright.com/latest/installation/command-line-and-language-server/),
