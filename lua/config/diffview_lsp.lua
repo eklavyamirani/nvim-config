@@ -35,6 +35,7 @@ local function snapshot(ctx, done)
   item = { root = vim.fn.tempname(), waiters = { done } }
   snapshots[key] = item
   vim.uv.fs_mkdir(item.root, 448)
+  item.root = vim.uv.fs_realpath(item.root) or item.root
   local archive = item.root .. '.tar'
   local function finish(err)
     vim.uv.fs_unlink(archive)
