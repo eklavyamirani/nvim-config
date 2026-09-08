@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+config_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+profile_dir="$config_root/.nvim-profile"
+mkdir -p "$profile_dir"
+if [ ! -L "$profile_dir/nvim" ]; then
+  ln -s "$config_root" "$profile_dir/nvim"
+fi
+export XDG_CONFIG_HOME="$profile_dir"
+exec nvim "$@"
