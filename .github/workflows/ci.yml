@@ -27,13 +27,14 @@ jobs:
       XDG_STATE_HOME: ${{ github.workspace }}/.ci/state
       XDG_CACHE_HOME: ${{ github.workspace }}/.ci/cache
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Neovim and parser compiler
-        run: |
-          curl -fsSL https://github.com/neovim/neovim/releases/download/${{ matrix.neovim }}/nvim-linux-x86_64.tar.gz \
-            | sudo tar -xz -C /opt
-          echo /opt/nvim-linux-x86_64/bin >> "$GITHUB_PATH"
-          sudo npm install --global tree-sitter-cli
+      - uses: actions/checkout@v5
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim }}
+      - name: Install parser compiler
+        run: sudo npm install --global tree-sitter-cli
       - name: Expose checkout as the Neovim config
         run: |
           mkdir -p "$XDG_CONFIG_HOME"
