@@ -12,10 +12,16 @@ local notifications = {}
 vim.notify = function(message) notifications[#notifications + 1] = message end
 route.setup({ command = function(text)
   prompt, requests = text, requests + 1
-  local ids = {}
-  for id in text:gmatch('\nID (%d+) |') do table.insert(ids, 1, { id = tonumber(id) }) end
+  local groups, sections = {}, {}
+  for id, kind in text:gmatch('\nID (%d+) | [^\n]- | section (%w+)') do
+    if not sections[kind] then
+      sections[kind] = { title = 'Behavior', why = 'Are these changes consistent?', ids = {} }
+      groups[#groups + 1] = sections[kind]
+    end
+    table.insert(sections[kind].ids, 1, tonumber(id))
+  end
   return { 'python3', '-c', 'import sys,time; time.sleep(float(sys.argv[1])); print(sys.argv[2])',
-    tostring(delay), vim.json.encode({ items = ids }) }
+    tostring(delay), vim.json.encode({ groups = groups }) }
 end })
 local root = vim.fn.tempname()
 vim.fn.mkdir(root, 'p')

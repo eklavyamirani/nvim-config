@@ -66,7 +66,10 @@ setup('code-review')
 setup('fzf-lua')
 setup('diffview', {
   use_icons = false,
-  keymaps = { file_panel = require('config.review_route').file_panel_keymaps() },
+  keymaps = {
+    file_panel = require('config.review_route').file_panel_keymaps(),
+    view = require('config.review_context').question_keymaps(),
+  },
   signs = { fold_closed = '+', fold_open = '-', done = '✓' },
   view = {
     default = { winbar_info = false },

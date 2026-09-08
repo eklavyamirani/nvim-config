@@ -140,6 +140,7 @@ Narrow terminals put the support panes below the diff.
 | Key / Command | Action |
 | --- | --- |
 | `<leader>ae` | Explain the current line or exact visual selection |
+| `<leader>aa` | Ask a specific question about the current line or exact visual selection |
 | `<leader>af` | Focus the explanation to read/scroll/select it |
 | `<leader>aq` | Ask a follow-up about the last explained selection |
 | `<leader>ap` | Pin selected text or the current line into private context notes |
@@ -156,12 +157,19 @@ shell aliases. It disables assistant tools; the explanation uses the supplied
 selection, up to 25 surrounding lines on either side, and your pinned notes.
 Requests go to the selected assistant provider only when you ask.
 
+To ask something specific, select code and press `<leader>aa`, then type your
+question and Enter. For example: “What does this expand to if the path contains
+spaces?” No prior explanation is needed. The code is captured before the input
+prompt opens; the question and answer appear in the existing support pane and
+are saved together. Escape or an empty question sends nothing. The shortcut
+also appears in the Diffview code pane's `g?` help.
+
 Diffview selections use the actual pane contents and its commit/index label.
 An old-side selection never silently becomes the working-tree version.
 Values in explanations are inferred or example values, not executed traces.
 Pinned facts are snapshots with a source location; they do not update as code
-changes. Follow-ups stay attached to the last explained selection; use `ae`
-again when you reach a different blocker.
+changes. Follow-ups (`aq`) stay attached to the last explained or questioned
+selection; use `ae` or `aa` when you reach a different blocker.
 
 Notes and the last successful answer live under
 `stdpath('state')/review-context/<repository-id>/`, outside the checkout. Pins
@@ -186,7 +194,7 @@ review ordering. Each file has a virtual review label beside its normal Git stat
 | `g?` in the file panel | Native help, including these review shortcuts |
 | `gs` in the file panel | Cycle default → AI → custom order |
 | `gd` / `ga` / `gc` in the file panel | Select default / saved AI / saved custom order |
-| `i` in default order | Toggle tree/list view; the choice is saved |
+| `i` in default or AI order | Toggle tree/list view; each choice is saved |
 | `J` / `K` in the file panel | Move the selected file down/up and save as custom |
 | `md` in the file panel | Mark done |
 | `ml` in the file panel | Mark come back later |
@@ -203,8 +211,13 @@ native panel. Review labels do not stage files or submit GitHub reviews.
 The panel's `Order:` line shows the active choice. Default supports Diffview's
 native tree/list view (`i`), including folder folding and review labels. Its
 tree/list choice is restored when switching back or reopening the comparison.
-AI and custom orders use a flat list and are saved independently; switching never overwrites
-either. `J`/`K` edits the displayed order and saves the result as custom, leaving
+AI order defaults to a directory tree within each review group. Group order is
+preserved; directories appear where their first suggested file occurs, bringing
+their other files together. The same directory can appear in multiple groups.
+Navigation follows the displayed tree, and normal folder folding works. Press
+`i` for the original flat AI sequence; this choice is saved separately from the
+default layout. Custom order uses a flat list. Orders are saved independently;
+switching never overwrites either. `J`/`K` edits the displayed order and saves the result as custom, leaving
 the saved AI order intact. Before any manual edits, custom uses the default order.
 
 All orders, the active choice, and review marks save automatically and privately.
@@ -217,8 +230,18 @@ old read markers become `done`.
 request. If none exists, it generates one. `go` explicitly requests a fresh
 suggestion using the same assistant as explanations and bounded diff excerpts,
 then selects the AI order. Review marks, custom order, and every changed file
-are retained. A manual move or switching to a saved order cancels a pending
-suggestion. Suggested dependencies are inferred,
+are retained. AI suggestions partition the diff into named review tasks, each
+with a shared review question and a contiguous list of files. Group headings
+and questions appear as virtual lines above each group's tree or list in AI
+mode and remain visible when folders are collapsed; native file navigation
+skips them. Custom and default orders do not display AI groups. Use `go` to replace
+an older saved suggestion with the new grouped format.
+
+Large patches are sampled across the diff, including the beginning and end,
+instead of sending only their first lines. The assistant still sees incomplete
+code. Responses with missing/duplicate IDs or groups mixing Git sections are
+rejected, retaining the previous orders. A manual move or switching to a saved
+order cancels a pending suggestion. Suggested dependencies are inferred,
 not proven. Set `vim.g.review_route_priority = 'risk'` before requesting a
 suggestion to prioritize consequential changes instead of understanding.
 

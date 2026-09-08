@@ -36,6 +36,33 @@ local function wait_for(text)
   assert(vim.wait(3000, function() return answer():find(text, 1, true) ~= nil end), answer())
 end
 
+local original_input, submit, input_options = vim.ui.input
+vim.ui.input = function(opts, callback) input_options, submit = opts, callback end
+local function ask_key(mode) vim.fn.maparg(' aa', mode, false, true).callback() end
+
+-- Ask directly without first requesting an explanation; cancel sends nothing.
+ask_key('n')
+assert(input_options.prompt:find('example.sh:2', 1, true))
+assert(#captured == 0 and #api.nvim_list_wins() == 1, 'input alone sent a request or opened panes')
+submit(nil)
+ask_key('n'); submit('   ')
+assert(#captured == 0 and #api.nvim_list_wins() == 1, 'cancel/empty input had side effects')
+ask_key('n')
+api.nvim_buf_set_lines(source_buf, 2, 3, false, { 'CHANGED_WHILE_TYPING' })
+submit('  Why does sourcing preserve variables?  ')
+wait_for('Meaning: load')
+assert(captured[1]:find('QUESTION: Why does sourcing preserve variables?', 1, true), 'specific question missing')
+assert(not captured[1]:find('PREVIOUS EXPLANATION:', 1, true), 'new question inherited an old explanation')
+assert(captured[1]:find('3  after', 1, true) and not captured[1]:find('CHANGED_WHILE_TYPING', 1, true), 'input changed captured context')
+assert(answer():find('**Question:** Why does sourcing preserve variables?', 1, true), 'answer omitted question')
+assert(api.nvim_get_current_win() == source_win, 'question moved focus out of code')
+local last_path = vim.fn.stdpath('state') .. '/review-context/' .. vim.fn.sha256(vim.uv.fs_realpath(root)):sub(1, 20) .. '/last.json'
+local saved = vim.json.decode(table.concat(vim.fn.readfile(last_path), '\n'))
+assert(saved.answer:find('Why does sourcing preserve variables?', 1, true), 'question was not persisted with answer')
+module.close()
+api.nvim_buf_set_lines(source_buf, 2, 3, false, { 'after' })
+captured = {}
+
 module.explain('line')
 assert(api.nvim_get_current_win() == source_win, 'opening support moved focus')
 assert(vim.deep_equal(api.nvim_win_get_cursor(source_win), { 2, 4 }), 'opening support moved cursor')
@@ -81,6 +108,31 @@ assert(captured[3]:find('OLD_REVISION_VALUE=42', 1, true), 'old revision replace
 assert(captured[3]:find('commit deadbeef01234567', 1, true), 'commit identity missing')
 assert(captured[3]:find('edited private note', 1, true), 'pinned context missing from request')
 
+-- A selected question captures exact columns and the old revision before input.
+local value_col = ('OLD_REVISION_VALUE=42'):find('42', 1, true) - 1
+api.nvim_win_set_cursor(source_win, { 1, value_col })
+vim.cmd.normal({ args = { 'vl' }, bang = true })
+local question_position = api.nvim_win_get_cursor(source_win)
+ask_key('x')
+api.nvim_buf_set_lines(old, 0, -1, false, { 'CHANGED_WHILE_QUESTION_WAS_OPEN' })
+api.nvim_win_set_cursor(source_win, { 1, 0 })
+submit('Why is this value 42?')
+wait_for('Meaning: load')
+assert(captured[4]:find('SELECTED EXPRESSION:\n42\n', 1, true), 'question lost selected columns')
+assert(captured[4]:find('commit deadbeef01234567', 1, true), 'question lost selected revision')
+assert(not captured[4]:find('CHANGED_WHILE_QUESTION_WAS_OPEN', 1, true), 'question recaptured code after input')
+assert(not captured[4]:find('PREVIOUS EXPLANATION:', 1, true), 'selected question reused prior answer')
+module.return_to_code()
+assert(vim.deep_equal(api.nvim_win_get_cursor(source_win), question_position), 'return lost question source position')
+module.ask(); submit('Could it be unset?')
+wait_for('Meaning: load')
+assert(captured[5]:find('PREVIOUS EXPLANATION:', 1, true) and captured[5]:find('Why is this value 42?', 1, true), 'follow-up lost question/answer')
+assert(captured[5]:find('SELECTED EXPRESSION:\n42\n', 1, true), 'follow-up left the question selection')
+local prior_answer, prior_count = answer(), #captured
+ask_key('n'); submit(nil)
+assert(answer() == prior_answer and #captured == prior_count, 'cancel replaced existing answer')
+vim.ui.input = original_input
+
 -- A slow earlier response must not overwrite the newer selection.
 module.setup({ command = function(prompt)
   local slow = prompt:find('SLOW_VALUE', 1, true)
@@ -111,5 +163,5 @@ restored.explain('line')
 wait_for('Explanation unavailable')
 restored.close()
 
-print('PASS: focus/cursor, exact selections, pins/private persistence, Diffview revision, request ordering, close/reopen, restart recovery and backend error.')
+print('PASS: direct questions, cancellation, captured selections/revisions, follow-ups, question persistence, focus/cursor, pins, request ordering and backend errors.')
 vim.cmd('qa!')
