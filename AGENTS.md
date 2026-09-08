@@ -104,12 +104,13 @@ When in doubt, lean toward less. The owner will ask for more if needed.
 | Color highlight | `catgoose/nvim-colorizer.lua` (fork)   |
 | Markdown render | `render-markdown.nvim` (minimal opts)  |
 | Code review     | `eklavyamirani/code-review.nvim`       |
+| Python LSP      | Native `vim.lsp` with BasedPyright     |
 
 When proposing a new plugin, justify it against what's already installed
 before adding another.
 
 ## Things deliberately NOT installed (yet)
 
-- **LSP / completion** — no LSP client or completion engine is configured. If
-  proposing one, ask first; don't assume.
+- **Third-party completion engine** — none is configured. Python uses the native
+  LSP client with BasedPyright and native completion.
 - **`mini.diff`** — explicitly removed in favor of gitsigns. Don't add back.
