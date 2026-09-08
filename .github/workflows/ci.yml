@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Neovim ${{ matrix.neovim }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim: [v0.12.5, nightly]
+    env:
+      XDG_CONFIG_HOME: /tmp/nvim-ci/config
+      XDG_DATA_HOME: ${{ github.workspace }}/.ci/data
+      XDG_STATE_HOME: ${{ github.workspace }}/.ci/state
+      XDG_CACHE_HOME: ${{ github.workspace }}/.ci/cache
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Neovim and parser compiler
+        run: |
+          curl -fsSL https://github.com/neovim/neovim/releases/download/${{ matrix.neovim }}/nvim-linux-x86_64.tar.gz \
+            | sudo tar -xz -C /opt
+          echo /opt/nvim-linux-x86_64/bin >> "$GITHUB_PATH"
+          sudo npm install --global tree-sitter-cli
+      - name: Expose checkout as the Neovim config
+        run: |
+          mkdir -p "$XDG_CONFIG_HOME"
+          ln -s "$GITHUB_WORKSPACE" "$XDG_CONFIG_HOME/nvim"
+      - name: Restore plugins and parsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            .ci/data/nvim/site
+            .ci/data/nvim/site/parser
+          key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('nvim-pack-lock.json', 'lua/config/plugins.lua') }}
+      - name: Install locked plugins
+        run: nvim --headless --cmd "set runtimepath^=$GITHUB_WORKSPACE" -u init.lua +qa
+      - name: Check customization record
+        run: make check-customizations
+      - name: Exercise editor configuration
+        run: make test-config
+      - name: Exercise review customizations
+        run: make test-review
