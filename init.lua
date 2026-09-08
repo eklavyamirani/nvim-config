@@ -10,6 +10,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 require('config.plugins')
 vim.lsp.enable('basedpyright')
+require('config.diffview_lsp').setup()
 
 local notify = require('mini.notify')
 -- Async check for remote config updates so startup isn't blocked by the network.
