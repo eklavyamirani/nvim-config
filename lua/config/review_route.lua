@@ -546,6 +546,41 @@ function M.attach(view)
   local panel = view.panel
   if panel._review_file_order then return end
   panel._review_file_order = true
+  local positions = {}
+  view._review_positions = positions
+  view.emitter:on('file_open_pre', function(_, entry, previous)
+    view._review_loading = true
+    if previous then
+      for _, win in ipairs(view.cur_layout.windows) do
+        if win.file and not win.file.nulled and win:is_valid() then
+          positions[api.nvim_win_get_buf(win.id)] = api.nvim_win_call(win.id, vim.fn.winsaveview)
+        end
+      end
+    end
+    local Diff1 = require('diffview.scene.layouts.diff_1').Diff1
+    if entry.kind ~= 'conflicting' and (entry.status == 'A' or entry.status == '?') then
+      if not entry.layout:instanceof(Diff1) then
+        entry._review_split_layout = entry.layout.class
+        entry:convert_layout(Diff1)
+      end
+    elseif entry._review_split_layout then
+      entry:convert_layout(entry._review_split_layout)
+      entry._review_split_layout = nil
+    end
+  end)
+  view.emitter:on('file_open_post', function(_, entry)
+    -- Diffview also moves the cursor on first-open; restore after that event.
+    vim.schedule(function()
+      if not api.nvim_tabpage_is_valid(view.tabpage) or view.cur_entry ~= entry then return end
+      for _, win in ipairs(view.cur_layout.windows) do
+        local saved = win.file and positions[win.file.bufnr]
+        if saved and win:is_valid() then
+          api.nvim_win_call(win.id, function() vim.fn.winrestview(saved) end)
+        end
+      end
+      view._review_loading = false
+    end)
+  end)
   panel._review_default_style = panel.listing_style
   local update, redraw, original_render = panel.update_components, panel.redraw, panel.render
   local original_order = panel.ordered_file_list
@@ -680,6 +715,35 @@ function M.setup(opts)
   end
   api.nvim_create_autocmd('User', { group = group,
     pattern = { 'DiffviewViewOpened', 'DiffviewViewEnter', 'DiffviewViewPostLayout' }, callback = attach_current })
+  api.nvim_create_autocmd('BufLeave', { group = group, callback = function(args)
+    local ok, view = pcall(active_view)
+    if not ok or not view._review_positions then return end
+    for _, win in ipairs(view.cur_layout.windows) do
+      if win:is_valid() and win.id == api.nvim_get_current_win() and win.file and not win.file.nulled then
+        view._review_positions[args.buf] = vim.fn.winsaveview()
+      end
+    end
+  end })
+  api.nvim_create_autocmd('BufEnter', { group = group, callback = function(args)
+    local ok, view = pcall(active_view)
+    if not ok or not view._review_positions or view._review_loading then return end
+    -- A native mark can switch buffers without selecting Diffview's entry.
+    vim.schedule(function()
+      if not api.nvim_tabpage_is_valid(view.tabpage) or view._review_loading
+        or api.nvim_get_current_tabpage() ~= view.tabpage or api.nvim_get_current_buf() ~= args.buf then return end
+      for _, entry in view.files:iter() do
+        if entry ~= view.cur_entry then
+          for _, file in ipairs(entry.layout:files()) do
+            if not file.nulled and file.bufnr == args.buf then
+              view._review_positions[args.buf] = vim.fn.winsaveview()
+              view:set_file(entry, true, true)
+              return
+            end
+          end
+        end
+      end
+    end)
+  end })
   api.nvim_create_autocmd('VimLeavePre', { group = group, callback = function()
     for _, route in pairs(routes) do
       cancel(route)

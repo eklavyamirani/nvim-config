@@ -34,6 +34,21 @@ end
 require('config.review_context').setup()
 setup('mini.files')
 setup('mini.notify')
+local function notification_history()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == 'mininotify-history' then
+      vim.api.nvim_set_current_win(win)
+      require('mini.notify').show_history()
+      return
+    end
+  end
+  vim.cmd.tabnew()
+  require('mini.notify').show_history()
+  vim.wo.wrap, vim.wo.linebreak = true, true
+  vim.keymap.set('n', 'q', '<cmd>close<cr>', { buffer = true, desc = 'Close notification history' })
+end
+vim.api.nvim_create_user_command('Notifications', notification_history, { desc = 'Open copyable notification history' })
+vim.keymap.set('n', '<leader>nh', notification_history, { desc = 'Notification history' })
 setup('nvim-autopairs')
 setup('lualine')
 setup('which-key')
@@ -66,6 +81,9 @@ setup('code-review')
 setup('fzf-lua')
 setup('diffview', {
   use_icons = false,
+  file_panel = {
+    win_config = { width = 45, win_opts = { wrap = true, linebreak = true, breakindent = true } },
+  },
   keymaps = {
     file_panel = require('config.review_route').file_panel_keymaps(),
     view = require('config.review_context').question_keymaps(),

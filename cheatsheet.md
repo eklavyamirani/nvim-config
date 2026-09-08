@@ -184,6 +184,16 @@ session, `<leader>cc` still opens its comment editor and `<leader>cs` submits.
 
 ### Organize files in the Diffview panel
 
+Long file-panel rows wrap so filenames and paths remain readable. Added and
+untracked files use a single code pane; modified files retain their normal
+comparison layout. File navigation and native marks preserve reading positions
+within the open review.
+
+Use `:Notifications` or `<leader>nh` to open mini.notify's complete session
+history in a separate tab. The buffer supports normal selection and yanking;
+`q` closes it. These notifications have their own history, separate from
+`:messages`.
+
 Branch/PR and uncommitted comparisons use Diffview's existing file panel for
 review ordering. Each file has a virtual review label beside its normal Git status:
 `[todo]` = not yet reviewed, `[done]` = done, `[later]` = come back later.
