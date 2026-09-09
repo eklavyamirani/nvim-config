@@ -1,1 +1,3 @@
 .nvim-profile/
+.ci/
+__pycache__/
