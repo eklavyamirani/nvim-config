@@ -1,12 +1,12 @@
 -- Loaded with the real init.lua: this is the executable specification for the
--- editor-wide customizations recorded in CUSTOMIZATIONS.md.
+-- editor-wide customizations recorded in tests/config_spec.json.
 local function mapping(mode, lhs, description)
   local found = vim.fn.maparg(lhs, mode, false, true)
   assert(found and found.desc == description, ('missing %s mapping %s (%s)'):format(mode, lhs, description))
   return found
 end
 
-local manifest = vim.json.decode(table.concat(vim.fn.readfile('tests/customizations.json'), '\n'))
+local manifest = vim.json.decode(table.concat(vim.fn.readfile('tests/config_spec.json'), '\n'))
 assert(vim.g.mapleader == ' ' and vim.g.maplocalleader == ' ')
 for name, expected in pairs(manifest.options) do
   assert(vim.o[name] == expected, ('option %s: expected %s, got %s'):format(name, expected, vim.o[name]))
