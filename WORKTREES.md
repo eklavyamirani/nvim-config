@@ -1,14 +1,14 @@
 # Isolated configuration worktrees
 
 The installed checkout at `~/.config/nvim` is on `main`, which includes Python
-LSP and revision-aware Diffview navigation from PR #2. Ordinary `nvim` uses this
-configuration. The ongoing review work remains on `review/workflow`, which now
-includes `main` and the previously tested integration.
+LSP from PR #2 and the review workflow from PR #6. Ordinary `nvim` includes the
+grouped file trees, reading fixes, and persistent question/answer threads.
+The next round of review work is on `review/next`, created from the merged `main`.
 
 | Directory under `~/.config/nvim-worktrees/` | Branch | Purpose |
 | --- | --- | --- |
-| `review` | `review/workflow` | Review groups, explanations, and reading fixes, with Python LSP from main |
-| `review-python` | `test/review-python` | Retained for the existing Neovim session; use `review` for new sessions |
+| `review` | `review/next` | Next review changes, starting from merged main |
+| `review-python` | Detached at PR #6's merge | Retained for the existing Neovim session; use `review` for new work |
 
 Start the review configuration from the project you want to review:
 
@@ -23,7 +23,7 @@ from that worktree. Installed plugins, cache, and private review state remain
 shared, so the saved selfhost-v2 reading route remains available through `ga`.
 Plugin updates can affect this shared installation.
 
-Make review changes in `review/workflow`. To incorporate future updates from
+Make review changes in `review/next`. To incorporate future updates from
 `main`:
 
 ```sh
@@ -32,15 +32,15 @@ git -C ~/.config/nvim merge --ff-only origin/main
 git -C ~/.config/nvim-worktrees/review merge main
 ```
 
-Restart Neovim after updating its configuration. The separate `python-lsp`
-worktree and `feat/python-lsp` branch were retired after the PR merged.
-`review-python` was fast-forwarded during reconciliation to preserve its running
-session's config path; it is no longer a separate integration workflow. Once
-that session is closed, the clean worktree and its merged branch can be removed:
+Restart Neovim after updating its configuration. The merged development branches
+were retired. The pre-squash review history is preserved locally by the tag
+`archive/review-pr6`. The separate `python-lsp` worktree was already removed.
+`review-python` retains the merged code at a detached HEAD so the running
+session's config path remains available. It does not track new development.
+Once that session is closed, the clean worktree can be removed:
 
 ```sh
 git -C ~/.config/nvim worktree remove ~/.config/nvim-worktrees/review-python
-git -C ~/.config/nvim branch -d test/review-python
 ```
 
 Within a committed Python Diffview pane, `gd` navigates to the definition at
