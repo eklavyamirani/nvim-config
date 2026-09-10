@@ -3,6 +3,10 @@
 Guidance for AI assistants working in this Neovim config repo. Read this before
 proposing changes — it captures the owner's preferences and mental model.
 
+For session context, read [README.md](README.md). Check [WORKTREES.md](WORKTREES.md)
+and `git worktree list` before choosing a checkout; the installed configuration
+and current development branch can be in different worktrees.
+
 ## High-level preferences
 
 - **Prefer built-in / native solutions over third-party when comparable.**
