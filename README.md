@@ -24,7 +24,7 @@ after changing the configuration.
 
 ## Editor and review workflow
 
-The leader key is Space. See the [shortcut guide](cheatsheet.md) for editor,
+The leader key is Space. See the [shortcut guide](cheatsheet.md) for most commonly used editor,
 file navigation, Git review, notifications, and assistant commands.
 
 Diffview uses its existing file panel for default, AI, and custom review orders.
