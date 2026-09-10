@@ -16,9 +16,9 @@ The config uses that installation when present, otherwise it looks for
 environment in Neovim's `stdpath('data') .. '/python-lsp'` instead.
 
 Python LSP is included in `main`. For ongoing review changes, launch the `review`
-worktree with `bin/nvim-config`; see `WORKTREES.md`. Roots are discovered from Python project
-markers, including `requirements.txt`, before falling back to `.git`. The
-server's tool environment is separate from the Python interpreter used by the
+worktree with `bin/nvim-config`; see [WORKTREES.md](../WORKTREES.md). Roots are
+discovered from Python project markers, including `requirements.txt`, before
+falling back to `.git`. The server's tool environment is separate from the Python interpreter used by the
 project; activate the project's virtual environment before launching when it
 needs one. Missing third-party packages can still produce import diagnostics.
 
