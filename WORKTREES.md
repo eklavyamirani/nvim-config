@@ -10,7 +10,7 @@ The local installation and development checkouts have different roles:
 | Path | Purpose |
 | --- | --- |
 | `~/.config/nvim` | Installed configuration used by ordinary `nvim` |
-| `~/.config/nvim-worktrees/review` | Development checkout for review configuration changes |
+| `~/.config/nvim-worktrees/` | Development checkouts for configuration changes |
 | Other paths shown by `git worktree list` | Additional checkouts; inspect their branch and usage before changing them |
 
 Branches and revisions can change independently of these paths. Inspect live
@@ -31,7 +31,7 @@ From the project you want to edit or review, launch the development configuratio
 
 ```sh
 cd /path/to/project
-~/.config/nvim-worktrees/review/bin/nvim-config
+~/.config/nvim-worktrees/<branch>/bin/nvim-config
 ```
 
 For another checkout, use that checkout's `bin/nvim-config`. The launcher points
