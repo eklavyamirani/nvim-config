@@ -81,7 +81,8 @@
     "n": {
       "gd": "Diffview LSP: definition at this commit",
       "K": "Diffview LSP: hover at this commit",
-      "<C-t>": "Diffview LSP: return from definition"
+      "grr": "Diffview LSP: references at this commit",
+      "<C-t>": "Diffview LSP: return from source jump"
     }
   },
   "autocmd_events": ["VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User"],

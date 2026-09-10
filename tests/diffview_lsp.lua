@@ -1,5 +1,6 @@
 vim.defer_fn(function()
   local api = vim.api
+  local original_select = vim.ui.select
   local root = vim.fn.tempname()
   vim.fn.mkdir(root, 'p')
   local function git(...)
@@ -24,6 +25,7 @@ vim.defer_fn(function()
     write('requirements.txt', {})
     write('stable.py', { 'def stable():', '    return "unchanged"' })
     write('helpers.py', { 'def greet(name: str) -> str:', '    return "base " + name' })
+    write('callers.py', { 'from helpers import greet', 'result = greet("unchanged")' })
     write('main.py', { 'from helpers import greet', 'from stable import stable', 'result = greet("base")', 'other = stable()' })
     git('add', '.')
     git('commit', '-qm', 'base')
@@ -35,6 +37,7 @@ vim.defer_fn(function()
     git('commit', '-qm', 'reviewed')
     local reviewed = git('rev-parse', 'HEAD')
     write('helpers.py', { '# Different checkout', '', '', '', 'def greet(name: int) -> int:', '    return name + 42' })
+    vim.fn.writefile({ 'later = greet(42)' }, root .. '/main.py', 'a')
     git('add', '.')
     git('commit', '-qm', 'later')
     vim.cmd.cd(root)
@@ -94,12 +97,67 @@ vim.defer_fn(function()
     assert(vim.wait(10000, function()
       return view.cur_entry.path == 'z_added.py' and api.nvim_win_get_cursor(0)[1] == 2
     end), 'definition in an unopened added file lost its target position')
+    local function references(commit, target_path, target_line, definition_line)
+      local selection
+      vim.ui.select = function(items, opts, choose)
+        selection = { items = items, opts = opts, choose = choose }
+      end
+      mapped('grr')
+      assert(vim.wait(20000, function() return selection ~= nil end), 'references picker did not open')
+      vim.ui.select = original_select
+      assert(selection.opts.prompt == 'References at ' .. commit:sub(1, 7), 'wrong reference revision')
+      local labels, target = {}, nil
+      for _, loc in ipairs(selection.items) do
+        local label = selection.opts.format_item(loc)
+        labels[label] = true
+        assert(vim.uri_to_fname(loc.uri):sub(1, #root + 1) ~= root .. '/', 'reference came from checkout')
+        assert(label ~= 'main.py:7:9', 'reference from a later commit leaked into the review')
+        if label:match('^' .. target_path:gsub('%.', '%%.') .. ':' .. target_line .. ':') then target = loc end
+      end
+      assert(labels['helpers.py:' .. definition_line .. ':5'], 'references omitted the historical declaration')
+      assert(labels['main.py:1:21'] and labels['main.py:3:10'], 'same-file references need distinct positions')
+      assert(target, 'missing reference in ' .. target_path .. ':' .. target_line)
+      selection.choose(target)
+      assert(vim.wait(10000, function()
+        if api.nvim_get_current_tabpage() ~= diff_tab or api.nvim_win_get_cursor(0)[1] ~= target_line then return false end
+        if vim.b.diffview_lsp then
+          return vim.b.diffview_lsp.path == target_path and vim.b.diffview_lsp.commit == commit
+        end
+        for _, win in ipairs(view.cur_layout.windows) do
+          if win.id == api.nvim_get_current_win() then
+            return win.file.path == target_path and win.file.rev.commit == commit
+          end
+        end
+      end), 'reference jump lost its revision or position')
+      vim.wait(100, function() return false end)
+    end
+    for _, side in ipairs({ { 'b', reviewed, 3 }, { 'a', base, 1 } }) do
+      open('helpers.py', side[1])
+      api.nvim_win_set_cursor(0, { side[3], 5 })
+      references(side[2], 'main.py', 3, side[3])
+      assert(api.nvim_get_current_line() == (side[1] == 'b' and 'result = greet("reviewed")' or 'result = greet("base")'),
+        'reference text came from the wrong revision')
+      mapped('<C-t>')
+      assert(vim.wait(5000, function()
+        return view.cur_entry.path == 'helpers.py' and vim.deep_equal(api.nvim_win_get_cursor(0), { side[3], 5 })
+      end), 'return from reference lost source position')
+    end
+    open('helpers.py', 'b')
+    api.nvim_win_set_cursor(0, { 3, 5 })
+    references(reviewed, 'callers.py', 2, 3)
+    assert(vim.bo.readonly and not vim.bo.modifiable, 'unchanged reference must be read-only')
+    references(reviewed, 'helpers.py', 3, 3)
+    mapped('<C-t>')
+    assert(vim.wait(5000, function()
+      return vim.b.diffview_lsp and vim.b.diffview_lsp.path == 'callers.py' and api.nvim_win_get_cursor(0)[1] == 2
+    end), 'return to unchanged reference source failed')
     assert(git('status', '--porcelain') == '', 'source repository changed')
     vim.cmd.DiffviewClose()
   end, debug.traceback)
+  vim.ui.select = original_select
   for _, client in ipairs(vim.lsp.get_clients()) do client:stop(true) end
   vim.fn.delete(root, 'rf')
   if not ok then print(err); vim.cmd('cquit') end
-  print('PASS: historical hover, both revision definitions, unchanged source pane, return positions, clean checkout.')
+  print('PASS: historical hover, definitions and references on both revisions, unchanged source navigation, return positions, clean checkout.')
   vim.cmd('qa!')
 end, 100)

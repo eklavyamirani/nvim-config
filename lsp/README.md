@@ -38,15 +38,18 @@ dimming, automatic f-string changes, and automatic baseline-file updates are
 disabled. There is no format-on-save or automatic code-action hook.
 
 LSP automatically attaches to real Python file buffers. In Diffview's committed
-Python panes, `gd` and `K` query a separate BasedPyright server using a temporary
+Python panes, `gd`, `K`, and `grr` query a separate BasedPyright server using a temporary
 Git archive of that pane's commit. The first request prepares the source and
 starts the server asynchronously. Each revision has its own source directory;
 the reviewed files are never presented as working-tree documents to the server.
 
 `gd` selects the target file and revision pane in the current Diffview tab.
 Unchanged files open in a reusable read-only source pane in that tab (`q` closes
-it). `Ctrl-t` returns to the previous definition jump's position. This bridge
-provides definition and hover requests; it does not attach diagnostics, rename,
+it). `grr` finds references (including the declaration) at that pane's commit;
+multiple matches appear in a picker with file, line, and column. Selecting a
+match uses the same revision-aware navigation as `gd`. `Ctrl-t` returns to the
+position before a definition or reference jump. This bridge
+provides definition, hover, and reference requests; it does not attach diagnostics, rename,
 or completion to Diffview buffers. Normal files retain the full native LSP setup.
 
 This currently supports committed Git source, including either comparison side.

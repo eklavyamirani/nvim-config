@@ -56,6 +56,6 @@ git -C ~/.config/nvim worktree remove ~/.config/nvim-worktrees/review-python
 ```
 
 Within a committed Python Diffview pane, `gd` navigates to the definition at
-that revision, `K` shows hover information, and `Ctrl-t` returns to the previous
+that revision, `grr` finds references, `K` shows hover information, and `Ctrl-t` returns to the previous
 position. See [lsp/README.md](lsp/README.md) for installation, shortcuts, and
 limitations.

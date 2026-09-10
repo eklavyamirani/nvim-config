@@ -97,7 +97,7 @@ conversation contents or review artifacts into repository documentation.
 | `lua/config/plugins.lua` | Plugin declarations/setup, Diffview options, notification history |
 | `lua/config/review_route.lua` | Review groups, ordering, marks, trees, and reading positions |
 | `lua/config/review_context.lua` | Captured source, assistant requests, conversation panes, private persistence |
-| `lua/config/diffview_lsp.lua` | Commit-specific Python definition/hover navigation |
+| `lua/config/diffview_lsp.lua` | Commit-specific Python definition, hover, and references |
 | `lsp/basedpyright.lua` | Native Python server configuration |
 | `tests/config_spec.json` | Declared configuration inventory checked by `scripts/check_config.py` |
 

@@ -169,6 +169,7 @@ function M.request(method)
       if not current() or client:is_stopped() then return end
       local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
       params.textDocument.uri = vim.uri_from_bufnr(buf)
+      if method == 'textDocument/references' then params.context = { includeDeclaration = true } end
       client:request(method, params, function(err, result)
         if not current() then return end
         if err then warn(err.message); return end
@@ -179,11 +180,12 @@ function M.request(method)
           return
         end
         local locations = result.uri and { result } or result
+        local label = method == 'textDocument/references' and 'References' or 'Definition'
         local function select(target)
           if not target or not current() then return end
           local path = vim.uri_to_fname(target.uri or target.targetUri)
           if path:sub(1, #item.root + 1) ~= item.root .. '/' then
-            warn('Definition is outside this commit: ' .. path)
+            warn(label .. ' outside this commit: ' .. path)
             return
           end
           history[view.tabpage] = history[view.tabpage] or {}
@@ -192,8 +194,11 @@ function M.request(method)
             target.targetSelectionRange or target.range, client.offset_encoding)
         end
         if #locations == 1 then select(locations[1]) else
-          vim.ui.select(locations, { prompt = 'Definition at ' .. ctx.commit:sub(1, 7), format_item = function(loc)
-            return vim.uri_to_fname(loc.uri or loc.targetUri):sub(#item.root + 2)
+          vim.ui.select(locations, { prompt = label .. ' at ' .. ctx.commit:sub(1, 7), format_item = function(loc)
+            local path = vim.uri_to_fname(loc.uri or loc.targetUri)
+            if path:sub(1, #item.root + 1) == item.root .. '/' then path = path:sub(#item.root + 2) end
+            local start = (loc.targetSelectionRange or loc.range).start
+            return ('%s:%d:%d'):format(path, start.line + 1, start.character + 1)
           end }, select)
         end
       end, buf)
@@ -205,7 +210,7 @@ function M.back()
   local view = require('diffview.lib').get_current_view()
   local stack = view and history[view.tabpage]
   local target = stack and table.remove(stack)
-  if not target then warn('No previous definition jump in this review.'); return end
+  if not target then warn('No previous source jump in this review.'); return end
   if api.nvim_win_is_valid(target.win) and api.nvim_win_get_buf(target.win) == target.buf then
     api.nvim_set_current_win(target.win)
     api.nvim_win_set_cursor(target.win, target.cursor)
@@ -219,7 +224,9 @@ function M.maps(buf)
     { buffer = buf, desc = 'Diffview LSP: definition at this commit' })
   vim.keymap.set('n', 'K', function() M.request('textDocument/hover') end,
     { buffer = buf, desc = 'Diffview LSP: hover at this commit' })
-  vim.keymap.set('n', '<C-t>', M.back, { buffer = buf, desc = 'Diffview LSP: return from definition' })
+  vim.keymap.set('n', 'grr', function() M.request('textDocument/references') end,
+    { buffer = buf, desc = 'Diffview LSP: references at this commit' })
+  vim.keymap.set('n', '<C-t>', M.back, { buffer = buf, desc = 'Diffview LSP: return from source jump' })
 end
 
 function M.setup()
