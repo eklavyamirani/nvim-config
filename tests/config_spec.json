@@ -43,6 +43,7 @@
       "<leader>ed": "mini.files",
       "<leader>ei": "init.lua",
       "<leader>?": "Open cheatsheet in a tab",
+      "<leader>nh": "Notification history",
       "<leader>ay": "AI: yank current line to clipboard",
       "<leader>aY": "AI: yank whole buffer to clipboard",
       "<leader>dv": "Diffview: open (working tree)",
@@ -61,6 +62,7 @@
       "]r": "Review: next file in panel order",
       "[r": "Review: previous file in panel order",
       "<leader>ae": "Review: explain beside the diff",
+      "<leader>aa": "Review: ask about the current line",
       "<leader>ap": "Review: pin selected context",
       "<leader>af": "Review: focus explanation",
       "<leader>aq": "Review: ask a follow-up",
@@ -70,6 +72,7 @@
     },
     "x": {
       "<leader>ay": "AI: yank selection to clipboard",
+      "<leader>aa": "Review: ask about selected code",
       "<leader>ae": "Review: explain beside the diff",
       "<leader>ap": "Review: pin selected context"
     }
@@ -81,13 +84,15 @@
       "<C-t>": "Diffview LSP: return from definition"
     }
   },
-  "autocmd_events": ["VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufLeave", "VimLeavePre", "User"],
+  "autocmd_events": ["VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User"],
   "behaviors": {
     "tests/config.lua": "Startup, options, mappings, plugins, commands, autocmds, and AI clipboard formatting",
     "tests/review_context.lua": "Explanation panes, exact selections, private notes, request ordering, and recovery",
     "tests/review_route.lua": "Committed-diff ordering, marks, persistence, migration, and assistant routing",
     "tests/review_tree.lua": "Tree/list rendering, nested marks, folding, and navigation",
+    "tests/review_group_tree.lua": "AI review groups, tree rendering, group descriptions, and persistence",
     "tests/review_worktree.lua": "Working tree, staged changes, staging, invalidation, and persistence",
-    "tests/review_startup.lua": "Full-init default-branch discovery and Diffview integration"
+    "tests/review_startup.lua": "Full-init default-branch discovery and Diffview integration",
+    "tests/review_reading.lua": "Wrapped paths, single-pane additions, cursor preservation, marks, and copyable notifications"
   }
 }

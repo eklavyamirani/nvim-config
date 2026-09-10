@@ -26,7 +26,10 @@ git('add', '.')
 git('commit', '-qm', 'base')
 local base = git('rev-parse', 'HEAD')
 vim.fn.writefile({ 'return require("b-logic")' }, root .. '/a-entry.lua')
-vim.fn.writefile({ 'return 2' }, root .. '/b-logic.lua')
+local large_diff = { 'local behavior_marker = true' }
+for i = 1, 800 do large_diff[#large_diff + 1] = '-- supporting logic ' .. i .. string.rep('x', 60) end
+large_diff[#large_diff + 1] = 'return 2'
+vim.fn.writefile(large_diff, root .. '/b-logic.lua')
 vim.fn.writefile({ 'assert(require("b-logic") == 2)' }, root .. '/c-test.lua')
 git('add', '.')
 git('commit', '-qm', 'change')
@@ -41,7 +44,10 @@ end), 'Diffview did not initialize')
 local view = lib.get_current_view()
 local route = require('config.review_route')
 local seen_prompt, requests = nil, 0
-local response = { items = { { id = 3, chapter = 'Understand the behavior', why = 'Start with the assertion that specifies the changed result.' } } }
+local response = { groups = {
+  { title = 'Specify the behavior', why = 'Does the assertion describe the changed result?', ids = { 3 } },
+  { title = 'Trace the implementation', why = 'Does the entry point use the changed logic?', ids = { 1, 2 } },
+} }
 route.setup({ command = function(prompt)
   requests = requests + 1
   seen_prompt = prompt
@@ -137,12 +143,29 @@ assert(vim.wait(5000, function() return requests == 1 and #notifications > initi
 assert(requests == 1)
 assert(seen_prompt:find(base, 1, true) and seen_prompt:find(head, 1, true))
 assert(seen_prompt:find('+return 2', 1, true))
-assert(order() == 'c-test.lua,a-entry.lua,b-logic.lua', 'suggestion dropped omitted files')
+assert(seen_prompt:find('+local behavior_marker = true', 1, true), 'large diff lost its beginning')
+assert(seen_prompt:find('[... omitted ...]', 1, true), 'large diff was not sampled')
+assert(#seen_prompt < 16000, 'sampled prompt exceeded its bounded budget')
+assert(order() == 'c-test.lua,a-entry.lua,b-logic.lua', 'group order did not reach the panel')
 assert(mode() == 'AI', 'suggestion did not select AI order')
+local function group_lines()
+  local lines = {}
+  local ns = api.nvim_get_namespaces()['review-file-groups']
+  for _, mark in ipairs(api.nvim_buf_get_extmarks(view.panel.bufid, ns, 0, -1, { details = true })) do
+    for _, line in ipairs(mark[4].virt_lines or {}) do lines[#lines + 1] = line[1][1] end
+  end
+  return table.concat(lines, '\n')
+end
+assert(group_lines():find('Specify the behavior', 1, true), 'group heading hidden')
+assert(group_lines():gsub('\n', ' '):find('Does the assertion describe the changed result?', 1, true), 'group question hidden')
+assert(group_lines():find('Trace the implementation', 1, true), 'second group heading hidden')
 assert(status('c-test.lua') == '[done] ' and status('a-entry.lua') == '[later] ')
 assert(vim.bo.filetype == 'DiffviewFiles', 'suggestion opened a different panel')
+on_path('c-test.lua'); press('<CR>'); assert(ready('c-test.lua'))
+press('<Tab>'); assert(ready('a-entry.lua'), 'group headings broke next-file navigation')
 on_path('a-entry.lua'); press('J')
 assert(order() == 'c-test.lua,b-logic.lua,a-entry.lua' and mode() == 'Custom')
+assert(group_lines() == '', 'AI groups leaked into custom order')
 press('ga')
 assert(order() == 'c-test.lua,a-entry.lua,b-logic.lua' and mode() == 'AI', 'manual edit changed saved AI order')
 assert(requests == 1, 'selecting saved AI order called the assistant')
@@ -154,14 +177,21 @@ press('gs')
 assert(order() == 'c-test.lua,a-entry.lua,b-logic.lua' and mode() == 'AI')
 assert(status('c-test.lua') == '[done] ' and status('a-entry.lua') == '[later] ')
 local count = #notifications
-response = { items = { { id = 1 }, { id = 1 } } }
+response = { groups = { { title = 'Duplicate', why = 'Check?', ids = { 1, 1, 2, 3 } } } }
 press('go')
 assert(vim.wait(5000, function() return #notifications > count end))
 assert(notifications[#notifications]:find('duplicate or unknown', 1, true))
 assert(order() == 'c-test.lua,a-entry.lua,b-logic.lua', 'invalid suggestion replaced order')
+-- An incomplete plan must not turn into an arbitrary tail of omitted files.
+count = #notifications
+response = { groups = { { title = 'Incomplete', why = 'Check?', ids = { 1 } } } }
+press('go')
+assert(vim.wait(5000, function() return #notifications > count end))
+assert(notifications[#notifications]:find('omitted 2 file(s)', 1, true))
+assert(order() == 'c-test.lua,a-entry.lua,b-logic.lua' and mode() == 'AI', 'incomplete plan replaced saved order')
 -- A manual move wins over a pending response.
 route.setup({ command = function()
-  return { 'python3', '-c', 'import time; time.sleep(0.5); print(\'{"items":[{"id":1},{"id":2},{"id":3}]}\')' }
+  return { 'python3', '-c', 'import time; time.sleep(0.5); print(\'{"groups":[{"title":"Behavior","why":"Check?","ids":[1,2,3]}]}\')' }
 end })
 on_path('c-test.lua'); press('go'); press('J')
 vim.wait(700, function() return false end)
@@ -179,6 +209,7 @@ assert(mode() == 'Custom', 'active order not restored automatically')
 assert(status('c-test.lua') == '[done] ' and status('a-entry.lua') == '[later] ', 'saved statuses not restored')
 route.open(); press('ga')
 assert(order() == 'c-test.lua,a-entry.lua,b-logic.lua' and mode() == 'AI', 'saved AI order not restored')
+assert(group_lines():find('Specify the behavior', 1, true), 'saved group heading not restored')
 press('gd')
 assert(order() == 'a-entry.lua,b-logic.lua,c-test.lua' and mode() == 'Default')
 press('gc')

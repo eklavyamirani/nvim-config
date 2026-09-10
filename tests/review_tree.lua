@@ -9,7 +9,7 @@ local route = require('config.review_route')
 require('diffview').setup({ use_icons = false, file_panel = { listing_style = 'list' },
   keymaps = { file_panel = route.file_panel_keymaps() } })
 route.setup({ command = function()
-  return { 'python3', '-c', 'print(\'{"items":[{"id":2},{"id":1},{"id":3}]}\')' }
+  return { 'python3', '-c', 'print(\'{"groups":[{"title":"Behavior","why":"Does it work?","ids":[2,1,3]}]}\')' }
 end })
 local root = vim.fn.tempname()
 vim.fn.mkdir(root .. '/z-dir/nested', 'p')
@@ -95,7 +95,7 @@ press('ga')
 assert(vim.wait(5000, function()
   return table.concat(api.nvim_buf_get_lines(view.panel.bufid, 0, -1, false), '\n'):find('Order: AI', 1, true)
 end), 'AI order did not arrive')
-assert(view.panel.listing_style == 'list', 'AI order did not use flat list')
+assert(view.panel.listing_style == 'tree', 'AI order did not use grouped trees')
 press('gd'); assert(view.panel.listing_style == 'tree')
 vim.cmd.DiffviewClose(); open()
 assert(view.panel.listing_style == 'tree', 'saved tree preference not restored')
