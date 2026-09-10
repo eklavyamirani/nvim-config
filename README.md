@@ -2,94 +2,72 @@
 
 This configuration uses Neovim 0.12+, native `vim.pack`, and a committed plugin
 lockfile. It includes Diffview review tools, persistent code-explanation threads,
-and native Python LSP with BasedPyright. Validation currently targets Neovim
-0.12.5 locally and 0.12.5/nightly in CI.
+and native Python LSP with BasedPyright. CI targets Neovim 0.12.5 and nightly.
 
-## Start a new development session
+## Start a development session
 
 Read [AGENTS.md](AGENTS.md) for the owner's preferences and
-[WORKTREES.md](WORKTREES.md) for checkout locations and lifecycle instructions.
-Continue development in this checkout:
+[WORKTREES.md](WORKTREES.md) for selecting and running a configuration checkout.
+Before editing, inspect the actual checkout and any existing changes:
 
 ```sh
-cd ~/.config/nvim-worktrees/review
+pwd
 git status --short --branch
+git worktree list
 ```
 
-The current development branch is `review/next`, created from `main` after
-[PR #6](https://github.com/eklavyamirani/nvim-config/pull/6) merged. The installed
-checkout at `~/.config/nvim` stays on `main`. These handoff updates are on
-`review/next`; copies of the docs on `main` describe the last merged checkpoint.
-Verify the actual state with `git worktree list` before changing branches.
+Use the user's current feedback to determine the task. The installed configuration
+and the development checkout can differ; verify which one the user's Neovim
+session loads before diagnosing behavior. Run the chosen checkout's
+`bin/nvim-config` from the project being edited or reviewed, and restart Neovim
+after changing the configuration.
 
-To test development changes while reviewing a project:
+## Editor and review workflow
 
-```sh
-cd ~/repositories/selfhost-v2
-~/.config/nvim-worktrees/review/bin/nvim-config
-```
+The leader key is Space. See the [shortcut guide](cheatsheet.md) for editor,
+file navigation, Git review, notifications, and assistant commands.
 
-Ordinary `nvim` uses the installed `main` configuration and already includes
-the merged review and LSP features. Restart Neovim to load configuration changes.
+Diffview uses its existing file panel for default, AI, and custom review orders.
+AI groups have directory trees and review questions; files can be marked todo,
+done, or later. Panel paths wrap, added files use a single code pane, and file
+navigation preserves reading positions. In the file panel, `ga` restores the
+saved AI order (or generates one if absent) and `go` generates or replaces it.
 
-## Working checkpoint
+`<leader>ae` explains the current line or visual selection beside the code.
+`<leader>aa` starts a specific question about that code. `<leader>aq` appends a
+follow-up and sends the earlier conversation as context. A new `ae` or `aa`
+starts a fresh thread; `:ReviewContext` restores the saved thread after restarting.
+Pinned notes supply reusable context. The assistant backend defaults to an
+authenticated Copilot CLI; Claude Code is configurable. See the
+[assistant workflow](cheatsheet.md#ai-cli-bridge-clipboard) for setup and controls.
 
-- [PR #2](https://github.com/eklavyamirani/nvim-config/pull/2): native Python
-  LSP and definition/hover navigation against the commit displayed in Diffview.
-- [PR #3](https://github.com/eklavyamirani/nvim-config/pull/3): CI, configuration
-  inventory, and checks for configuration drift.
-- [PR #6](https://github.com/eklavyamirani/nvim-config/pull/6): AI review groups
-  with directory trees and review questions; wrapped file-panel paths;
-  single-pane additions; preserved reading positions; copyable notifications;
-  direct questions and persistent follow-up threads.
+Python files use native LSP with BasedPyright. In committed Python Diffview
+panes, `gd`, `K`, and `grr` query a temporary archive of the displayed commit for
+definitions, hover information, and references. Jumps stay in the Diffview tab;
+unchanged files open read-only, and `Ctrl-t` returns to the source position.
+The server is installed separately from plugins and project dependencies; see
+the [Python LSP guide](lsp/README.md) for installation and supported snapshots.
 
-The owner tested the workflow and confirmed it works well. `<leader>ae` starts
-an explanation; repeated `<leader>aq` calls append user/AI messages and send
-the earlier conversation as context. `<leader>aa` starts a question about the
-selected code. A new `ae` or `aa` starts a fresh thread; `:ReviewContext`
-restores the saved thread after restarting.
+## Current limitations
 
-See the [shortcut guide](cheatsheet.md) for everyday use and
-[Python LSP guide](lsp/README.md) for server installation and snapshot-navigation
-limitations. The LSP server lives outside project dependencies; it is not
-installed by `vim.pack` or by starting the editor.
+AI grouping uses file metadata and sampled diffs. It has no interaction for
+capturing the reviewer's goals before generating groups, and Python LSP analysis
+is not supplied to the grouping request. Explanations use captured code,
+surrounding lines, pinned notes, and conversation context; they do not execute
+the reviewed code. The support panes handle ordinary files and Diffview, but
+are not adapted to the separate CodeReview plugin's custom buffers.
 
-## Remaining design problem
-
-AI grouping still starts from file metadata and sampled diffs. Group titles
-and questions help navigation, but they do not establish what the reviewer
-wants to understand or validate. LSP currently supports Python source navigation;
-its analysis is not supplied to the AI grouping request.
-
-The next design task is to define how the reviewer supplies their goals before
-requesting groups. The owner wants help articulating their needs, rather than
-having the assistant's suggested goals stand in for their own. Capture intended
-behaviors, priorities, unfamiliar language concepts, and correctness/security
-questions, then use that context to propose a reading route. Agree on the
-problem statement and a small interaction to try before expanding the grouping
-implementation. This goal-capture flow is not implemented yet.
-
-The motivating trial is the reconciler change in `selfhost-v2`:
-
-- The reconciler is critical. Focus on its self-update loop and how application
-  updates are applied, including failures, edge cases, and security.
-- Python is unfamiliar to the reviewer; explain syntax when it blocks their
-  understanding of behavior.
-- Application manifests, schemas, and configuration are high priority.
-  Ansible setup is medium priority; Terraform setup is lower priority.
-
-A tailored route and review notes were prepared privately for that trial.
-`ga` reuses the saved AI route; `go` generates a replacement using the current
-generic grouping prompt. Preserve the trial when investigating a goal-driven
-workflow. It is a reading aid, not a completed correctness or security audit.
+Commit-specific LSP navigation supports Git commits on either comparison side.
+Index/conflict snapshots and historical installed dependencies are not reproduced.
+Normal Python file buffers retain the native LSP setup.
 
 ## State and source locations
 
 Routes, pinned notes, and the latest conversation are stored outside the repo
-under `stdpath('state')/review-context/<repository-id>/`. The trial's supporting
-brief and guide are in `reconciler-goal-trial/` within its repository state
-directory. Find the state root with `:echo stdpath('state')`. Do not copy private
-conversation contents or review artifacts into repository documentation.
+under `stdpath('state')/review-context/<repository-id>/`. Find the state root with
+`:echo stdpath('state')`. Preserve existing saved routes and notes when testing;
+do not copy private conversation contents or review artifacts into repository
+documentation. Tests use temporary repositories for their review data.
 
 | File | Responsibility |
 | --- | --- |
@@ -99,12 +77,15 @@ conversation contents or review artifacts into repository documentation.
 | `lua/config/review_context.lua` | Captured source, assistant requests, conversation panes, private persistence |
 | `lua/config/diffview_lsp.lua` | Commit-specific Python definition, hover, and references |
 | `lsp/basedpyright.lua` | Native Python server configuration |
+| `nvim-pack-lock.json` | Committed plugin versions |
+| `bin/nvim-config` | Launch Neovim with this checkout's configuration |
 | `tests/config_spec.json` | Declared configuration inventory checked by `scripts/check_config.py` |
+| `.github/workflows/ci.yml` | CI environment and validation jobs |
 
 ## Validation
 
-From the development checkout, use its launcher so Neovim loads that worktree's
-Lua modules and lockfile:
+From the chosen checkout, use its launcher so Neovim loads that worktree's Lua
+modules and lockfile:
 
 ```sh
 bin/nvim-config --headless -u init.lua +qa
@@ -125,5 +106,4 @@ bin/nvim-config --headless -u init.lua -c "lua dofile('tests/python_lsp.lua')"
 bin/nvim-config --headless -u init.lua -c "lua dofile('tests/diffview_lsp.lua')"
 ```
 
-These two LSP tests are separate from `make test`. The merged checkpoint passed
-the full review suite, startup checks, and the relevant LSP tests.
+These two LSP tests are separate from `make test` and are not run by CI.

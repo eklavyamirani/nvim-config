@@ -15,8 +15,8 @@ The config uses that installation when present, otherwise it looks for
 `basedpyright-langserver` on PATH. With a custom `XDG_DATA_HOME`, put the virtual
 environment in Neovim's `stdpath('data') .. '/python-lsp'` instead.
 
-Python LSP is included in `main`. For ongoing review changes, launch the `review`
-worktree with `bin/nvim-config`; see [WORKTREES.md](../WORKTREES.md). Roots are
+Launch the chosen checkout with `bin/nvim-config`; see
+[WORKTREES.md](../WORKTREES.md). Roots are
 discovered from Python project markers, including `requirements.txt`, before
 falling back to `.git`. The server's tool environment is separate from the Python interpreter used by the
 project; activate the project's virtual environment before launching when it

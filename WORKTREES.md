@@ -1,61 +1,76 @@
-# Isolated configuration worktrees
+# Configuration worktrees
 
-For the development handoff, completed features, and remaining design questions,
-start with [README.md](README.md). This file describes the local worktree setup
-after PR #6; use `git worktree list` to check whether it has changed.
+Read [README.md](README.md) for the configuration's behavior, source map, and
+validation commands, and [AGENTS.md](AGENTS.md) before making changes.
 
-The installed checkout at `~/.config/nvim` is on `main`, which includes Python
-LSP from PR #2 and the review workflow from PR #6. Ordinary `nvim` includes the
-grouped file trees, reading fixes, and persistent question/answer threads.
-The next round of review work is on `review/next`, created from the merged `main`.
+## Select a checkout
 
-| Directory under `~/.config/nvim-worktrees/` | Branch or revision | Purpose |
-| --- | --- | --- |
-| `review` | `review/next` | Next review changes, starting from merged main |
-| `review-python` | Detached at `123deb7` (PR #6) | Legacy config path; use `review` for new work |
+The local installation and development checkouts have different roles:
 
-Start the review configuration from the project you want to review:
+| Path | Purpose |
+| --- | --- |
+| `~/.config/nvim` | Installed configuration used by ordinary `nvim` |
+| `~/.config/nvim-worktrees/review` | Development checkout for review configuration changes |
+| Other paths shown by `git worktree list` | Additional checkouts; inspect their branch and usage before changing them |
+
+Branches and revisions can change independently of these paths. Inspect live
+Git state instead of assuming which branch a checkout contains:
 
 ```sh
-cd ~/repositories/selfhost-v2
+git worktree list
+git status --short --branch
+```
+
+Run these from the checkout where you intend to work. Preserve existing changes
+and use the development checkout unless the user's task calls for another one.
+Do not switch or update the installed checkout as a side effect of testing.
+
+## Run the selected configuration
+
+From the project you want to edit or review, launch the development configuration:
+
+```sh
+cd /path/to/project
 ~/.config/nvim-worktrees/review/bin/nvim-config
 ```
 
-Each launcher points `XDG_CONFIG_HOME` to a private, ignored profile symlink
-inside that worktree. Config modules and the plugin lockfile therefore come
-from that worktree. Installed plugins, cache, and private review state remain
-shared, so the saved selfhost-v2 reading route remains available through `ga`.
-Plugin updates can affect this shared installation.
+For another checkout, use that checkout's `bin/nvim-config`. The launcher points
+`XDG_CONFIG_HOME` to an ignored `.nvim-profile/nvim` symlink inside its checkout.
+Lua modules and the plugin lockfile therefore come from the selected checkout.
+Using `nvim -u /path/to/worktree/init.lua` alone does not select that worktree's
+Lua modules or lockfile.
 
-Using `nvim -u /path/to/worktree/init.lua` alone does not select the worktree's
-Lua modules or lockfile. Use its `bin/nvim-config` launcher. Inside Neovim,
-`:echo stdpath('config')` identifies the configuration path in use. The legacy
-`review-python` launcher stays on the merged checkpoint and will not pick up
-changes made on `review/next`.
+Inside Neovim, `:echo stdpath('config')` identifies the configuration path in use.
+Resolve the profile symlink if needed to identify its checkout. Check this when
+the observed behavior differs from the code you are editing. An existing session
+keeps its loaded configuration; restart using the intended launcher after updates.
 
-Make review changes in `review/next`. To incorporate future updates from
-`main`:
+The launcher leaves data, cache, and state locations shared between checkouts.
+Plugin updates can affect other sessions, and saved review routes and notes
+remain available across launchers. Tests and development should preserve that
+private state. Use the validation commands in [README.md](README.md) from the
+chosen checkout.
 
-```sh
-git -C ~/.config/nvim fetch origin
-git -C ~/.config/nvim merge --ff-only origin/main
-git -C ~/.config/nvim-worktrees/review merge main
-```
+## Maintain worktrees
 
-Restart Neovim after updating its configuration. The merged development branches
-were retired. The pre-squash review history is preserved locally by the tag
-`archive/review-pr6`. The separate `python-lsp` worktree was already removed.
-`review-python` retains the merged code at a detached HEAD so the running
-session's config path remains available. It does not track new development.
-Check that no session still uses that configuration path before removal, and
-check for local changes first. Once unused and clean, remove it without force:
+Before synchronizing a branch, inspect its status, upstream, and divergence:
 
 ```sh
-git -C ~/.config/nvim-worktrees/review-python status --short
-git -C ~/.config/nvim worktree remove ~/.config/nvim-worktrees/review-python
+git fetch origin
+git status --short --branch
+git log --oneline --left-right HEAD...origin/main
 ```
 
-Within a committed Python Diffview pane, `gd` navigates to the definition at
-that revision, `grr` finds references, `K` shows hover information, and `Ctrl-t` returns to the previous
-position. See [lsp/README.md](lsp/README.md) for installation, shortcuts, and
-limitations.
+Integrate updates into the intended development branch according to the task.
+When updating the installed configuration, first confirm that its checkout is
+clean and on `main`; `git merge --ff-only origin/main` then updates it without
+creating a merge commit. Restart Neovim to load the updated configuration.
+
+Additional worktrees may still be used by running Neovim sessions. Before removing
+one, confirm it is unused and check its local changes. Once unused and clean,
+remove it without force from another checkout:
+
+```sh
+git -C /path/to/unused-worktree status --short --branch
+git worktree remove /path/to/unused-worktree
+```
