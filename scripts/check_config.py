@@ -43,6 +43,9 @@ def main() -> None:
     expected_mappings = {
         (mode, key) for mode, entries in spec["keymaps"].items() for key in entries
     }
+    expected_mappings.update(
+        (mode, key) for mode, entries in spec.get("buffer_keymaps", {}).items() for key in entries
+    )
     unexpected_mappings = mappings - expected_mappings
     if unexpected_mappings:
         raise SystemExit(f"keymap spec drift; add: {sorted(unexpected_mappings)}")

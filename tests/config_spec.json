@@ -74,6 +74,13 @@
       "<leader>ap": "Review: pin selected context"
     }
   },
+  "buffer_keymaps": {
+    "n": {
+      "gd": "Diffview LSP: definition at this commit",
+      "K": "Diffview LSP: hover at this commit",
+      "<C-t>": "Diffview LSP: return from definition"
+    }
+  },
   "autocmd_events": ["VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufLeave", "VimLeavePre", "User"],
   "behaviors": {
     "tests/config.lua": "Startup, options, mappings, plugins, commands, autocmds, and AI clipboard formatting",

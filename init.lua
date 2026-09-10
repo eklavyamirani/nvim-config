@@ -9,6 +9,8 @@ vim.o.termguicolors = true  -- must be set before colorscheme
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 require('config.plugins')
+vim.lsp.enable('basedpyright')
+require('config.diffview_lsp').setup()
 
 local notify = require('mini.notify')
 -- Async check for remote config updates so startup isn't blocked by the network.
@@ -131,4 +133,3 @@ end
 vim.keymap.set('x', '<leader>ay', function() ai_yank('visual') end, { desc = 'AI: yank selection to clipboard' })
 vim.keymap.set('n', '<leader>ay', function() ai_yank('line') end,   { desc = 'AI: yank current line to clipboard' })
 vim.keymap.set('n', '<leader>aY', function() ai_yank('buffer') end, { desc = 'AI: yank whole buffer to clipboard' })
-
