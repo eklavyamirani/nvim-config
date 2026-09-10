@@ -15,5 +15,7 @@ test-review:
 	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_context.lua')"
 	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_route.lua')"
 	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_tree.lua')"
+	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_group_tree.lua')"
 	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_worktree.lua')"
 	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/review_startup.lua')"
+	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/review_reading.lua')"
