@@ -142,7 +142,7 @@ Narrow terminals put the support panes below the diff.
 | `<leader>ae` | Explain the current line or exact visual selection |
 | `<leader>aa` | Ask a specific question about the current line or exact visual selection |
 | `<leader>af` | Focus the explanation to read/scroll/select it |
-| `<leader>aq` | Ask a follow-up about the last explained selection |
+| `<leader>aq` | Continue the current thread about the captured selection |
 | `<leader>ap` | Pin selected text or the current line into private context notes |
 | `<leader>an` | Edit the pinned context pane; `:w` saves |
 | `<leader>ar` / Enter in a support pane | Return to the captured code position |
@@ -169,12 +169,15 @@ An old-side selection never silently becomes the working-tree version.
 Values in explanations are inferred or example values, not executed traces.
 Pinned facts are snapshots with a source location; they do not update as code
 changes. Follow-ups (`aq`) stay attached to the last explained or questioned
-selection; use `ae` or `aa` when you reach a different blocker.
+selection. Each follow-up appends your question and the AI reply to the pane,
+and sends the earlier questions and replies in order as context. Scroll up in
+the explanation pane to reread the thread. Use `ae` or `aa` to start a new
+thread when you reach a different blocker.
 
-Notes and the last successful answer live under
+Notes and the current conversation live under
 `stdpath('state')/review-context/<repository-id>/`, outside the checkout. Pins
 save immediately; edited notes save with `:w`, on leaving the buffer, or on
-exit. `:ReviewContext` restores the last answer after restarting; the original
+exit. `:ReviewContext` restores the conversation after restarting; the original
 Diffview must be reopened manually to restore a revision that is no longer
 displayed. This support pane works with ordinary file buffers and Diffview;
 the separate CodeReview plugin's custom buffers are not yet adapted.

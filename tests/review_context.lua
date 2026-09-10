@@ -33,7 +33,9 @@ local function answer()
   return found
 end
 local function wait_for(text)
-  assert(vim.wait(3000, function() return answer():find(text, 1, true) ~= nil end), answer())
+  assert(vim.wait(3000, function()
+    return answer():find(text, 1, true) ~= nil and not answer():find('Asking for an explanation…', 1, true)
+  end), answer())
 end
 
 local original_input, submit, input_options = vim.ui.input
@@ -52,9 +54,9 @@ api.nvim_buf_set_lines(source_buf, 2, 3, false, { 'CHANGED_WHILE_TYPING' })
 submit('  Why does sourcing preserve variables?  ')
 wait_for('Meaning: load')
 assert(captured[1]:find('QUESTION: Why does sourcing preserve variables?', 1, true), 'specific question missing')
-assert(not captured[1]:find('PREVIOUS EXPLANATION:', 1, true), 'new question inherited an old explanation')
+assert(not captured[1]:find('CONVERSATION SO FAR', 1, true), 'new question inherited an old explanation')
 assert(captured[1]:find('3  after', 1, true) and not captured[1]:find('CHANGED_WHILE_TYPING', 1, true), 'input changed captured context')
-assert(answer():find('**Question:** Why does sourcing preserve variables?', 1, true), 'answer omitted question')
+assert(answer():find('## You\n\nWhy does sourcing preserve variables?', 1, true), 'answer omitted question')
 assert(api.nvim_get_current_win() == source_win, 'question moved focus out of code')
 local last_path = vim.fn.stdpath('state') .. '/review-context/' .. vim.fn.sha256(vim.uv.fs_realpath(root)):sub(1, 20) .. '/last.json'
 local saved = vim.json.decode(table.concat(vim.fn.readfile(last_path), '\n'))
@@ -79,7 +81,9 @@ wait_for('Meaning: load')
 assert(captured[2]:find('SELECTED EXPRESSION:\n' .. expected .. '\n', 1, true), 'selected columns not preserved')
 
 module.focus()
-api.nvim_win_set_cursor(0, { 4, 0 })
+for i, line in ipairs(api.nvim_buf_get_lines(0, 0, -1, false)) do
+  if line:find('Keep: source runs in this shell.', 1, true) then api.nvim_win_set_cursor(0, { i, 0 }); break end
+end
 module.pin('line')
 module.notes()
 local note_path = api.nvim_buf_get_name(0)
@@ -121,12 +125,12 @@ wait_for('Meaning: load')
 assert(captured[4]:find('SELECTED EXPRESSION:\n42\n', 1, true), 'question lost selected columns')
 assert(captured[4]:find('commit deadbeef01234567', 1, true), 'question lost selected revision')
 assert(not captured[4]:find('CHANGED_WHILE_QUESTION_WAS_OPEN', 1, true), 'question recaptured code after input')
-assert(not captured[4]:find('PREVIOUS EXPLANATION:', 1, true), 'selected question reused prior answer')
+assert(not captured[4]:find('CONVERSATION SO FAR', 1, true), 'selected question reused prior answer')
 module.return_to_code()
 assert(vim.deep_equal(api.nvim_win_get_cursor(source_win), question_position), 'return lost question source position')
 module.ask(); submit('Could it be unset?')
 wait_for('Meaning: load')
-assert(captured[5]:find('PREVIOUS EXPLANATION:', 1, true) and captured[5]:find('Why is this value 42?', 1, true), 'follow-up lost question/answer')
+assert(captured[5]:find('CONVERSATION SO FAR', 1, true) and captured[5]:find('Why is this value 42?', 1, true), 'follow-up lost question/answer')
 assert(captured[5]:find('SELECTED EXPRESSION:\n42\n', 1, true), 'follow-up left the question selection')
 local prior_answer, prior_count = answer(), #captured
 ask_key('n'); submit(nil)
@@ -163,5 +167,90 @@ restored.explain('line')
 wait_for('Explanation unavailable')
 restored.close()
 
-print('PASS: direct questions, cancellation, captured selections/revisions, follow-ups, question persistence, focus/cursor, pins, request ordering and backend errors.')
+-- An explanation and multiple follow-ups retain both roles, even beyond the old
+-- 18 KB previous-answer limit. Errors remain visible but are not AI context.
+vim.ui.input = function(_, callback) submit = callback end
+local thread_prompts, reply_number = {}, 0
+local initial_reply = 'INITIAL_REPLY\n' .. string.rep('detail ', 3100) .. '\nINITIAL_END'
+local replies = { initial_reply, 'FIRST_REPLY', 'SECOND_REPLY', false, 'RECOVERED_REPLY', 'RESTORED_REPLY', 'NEW_THREAD_REPLY' }
+local function thread_command(text)
+  thread_prompts[#thread_prompts + 1] = text
+  reply_number = reply_number + 1
+  local reply = replies[reply_number]
+  if reply == false then return { 'python3', '-c', 'import sys; sys.stderr.write("TEST_BACKEND_ERROR"); sys.exit(1)' } end
+  return { 'python3', '-c', 'import sys; print(sys.argv[1])', reply }
+end
+local function ordered(text, values)
+  local position = 1
+  for _, value in ipairs(values) do
+    local first, last = text:find(value, position, true)
+    assert(first, 'missing/out-of-order thread content: ' .. value)
+    position = last + 1
+  end
+end
+local function follow(question, response)
+  vim.fn.maparg(' aq', 'n', false, true).callback()
+  submit(question)
+  wait_for(response)
+end
+restored.setup({ command = thread_command })
+vim.fn.maparg(' ae', 'n', false, true).callback()
+wait_for('INITIAL_END')
+vim.fn.maparg(' aq', 'n', false, true).callback()
+submit('What does the first explanation mean?')
+restored.focus()
+api.nvim_win_set_cursor(0, { 3, 0 })
+wait_for('FIRST_REPLY')
+assert(api.nvim_win_get_cursor(0)[1] == 3, 'reply moved the reader away from earlier messages')
+restored.return_to_code()
+follow('How does that relate to my first question?', 'SECOND_REPLY')
+local thread = { 'Explain this expression so I can continue reading.', 'INITIAL_REPLY', 'INITIAL_END',
+  'What does the first explanation mean?', 'FIRST_REPLY', 'How does that relate to my first question?', 'SECOND_REPLY' }
+ordered(answer(), thread)
+ordered(thread_prompts[3], vim.list_slice(thread, 1, 6))
+assert(thread_prompts[3]:find('USER:\nWhat does the first explanation mean?', 1, true))
+assert(thread_prompts[3]:find('AI:\nFIRST_REPLY', 1, true))
+assert(api.nvim_get_current_win() == source_win, 'follow-up moved focus from source')
+follow('What happens on failure?', 'TEST_BACKEND_ERROR')
+ordered(answer(), thread)
+follow('Please try that failure question again.', 'RECOVERED_REPLY')
+assert(thread_prompts[5]:find('What happens on failure?', 1, true), 'retry lost the failed user question')
+assert(not thread_prompts[5]:find('TEST_BACKEND_ERROR', 1, true), 'backend failure was supplied as an AI reply')
+assert(not thread_prompts[5]:find('Asking for an explanation', 1, true), 'progress text was supplied as an AI reply')
+saved = vim.json.decode(table.concat(vim.fn.readfile(last_path), '\n'))
+assert(#saved.turns == 5 and saved.turns[1].answer == initial_reply .. '\n', 'full thread was not persisted')
+assert(vim.uv.fs_stat(last_path).mode % 512 == 384, 'thread must be private')
+restored.close()
+package.loaded['config.review_context'] = nil
+restored = require('config.review_context')
+restored.setup({ command = thread_command })
+restored.open()
+ordered(answer(), thread)
+follow('Continue the restored thread.', 'RESTORED_REPLY')
+ordered(thread_prompts[6], thread)
+assert(thread_prompts[6]:find('RECOVERED_REPLY', 1, true), 'restored follow-up lost the latest reply')
+restored.explain('line')
+wait_for('NEW_THREAD_REPLY')
+assert(not thread_prompts[7]:find('CONVERSATION SO FAR', 1, true), 'new explanation inherited the old thread')
+assert(not answer():find('INITIAL_REPLY', 1, true), 'new explanation retained old transcript')
+restored.close()
+
+-- Older last.json files still seed a follow-up from the saved question/answer.
+saved.answer = '# legacy source\n\n**Question:** LEGACY_QUESTION\n\nLEGACY_REPLY'
+saved.turns = nil
+vim.fn.writefile({ vim.json.encode(saved) }, last_path)
+package.loaded['config.review_context'] = nil
+restored = require('config.review_context')
+local legacy_prompt
+restored.setup({ command = function(text)
+  legacy_prompt = text
+  return { 'python3', '-c', 'print("LEGACY_FOLLOWUP")' }
+end })
+restored.open()
+follow('Continue the older explanation.', 'LEGACY_FOLLOWUP')
+ordered(legacy_prompt, { 'USER:\nLEGACY_QUESTION', 'AI:\nLEGACY_REPLY', 'QUESTION: Continue the older explanation.' })
+restored.close()
+vim.ui.input = original_input
+
+print('PASS: selections, revisions, complete follow-up transcripts, persistence, legacy recovery, errors, focus and cancellation.')
 vim.cmd('qa!')
