@@ -1,3 +1,5 @@
+-- Windows has no POSIX modes; stdpath('state') is under the per-user %LOCALAPPDATA%.
+local windows = vim.fn.has('win32') == 1
 local api = vim.api
 vim.opt.runtimepath:prepend(vim.fn.getcwd())
 vim.g.mapleader = ' '
@@ -89,7 +91,7 @@ module.notes()
 local note_path = api.nvim_buf_get_name(0)
 assert(note_path:find('/review-context/', 1, true))
 assert(table.concat(vim.fn.readfile(note_path), '\n'):find('source runs in this shell', 1, true), 'pin not saved')
-assert(vim.uv.fs_stat(note_path).mode % 512 == 384, 'notes must be private')
+assert(windows or vim.uv.fs_stat(note_path).mode % 512 == 384, 'notes must be private')
 api.nvim_buf_set_lines(0, -1, -1, false, { 'An edited private note.' })
 module.return_to_code()
 assert(api.nvim_get_current_win() == source_win)
@@ -219,7 +221,7 @@ assert(not thread_prompts[5]:find('TEST_BACKEND_ERROR', 1, true), 'backend failu
 assert(not thread_prompts[5]:find('Asking for an explanation', 1, true), 'progress text was supplied as an AI reply')
 saved = vim.json.decode(table.concat(vim.fn.readfile(last_path), '\n'))
 assert(#saved.turns == 5 and saved.turns[1].answer == initial_reply .. '\n', 'full thread was not persisted')
-assert(vim.uv.fs_stat(last_path).mode % 512 == 384, 'thread must be private')
+assert(windows or vim.uv.fs_stat(last_path).mode % 512 == 384, 'thread must be private')
 restored.close()
 package.loaded['config.review_context'] = nil
 restored = require('config.review_context')

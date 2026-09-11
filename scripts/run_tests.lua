@@ -30,13 +30,14 @@ for _, test in ipairs(suites) do
   if selected[suite] then
     local cmd = type(init) == 'table' and init or {
       vim.v.progpath, '--headless', '--cmd', 'set runtimepath^=' .. root,
-      '-u', init, '-c', ("lua dofile('%s')"):format(file),
+      -- A test error outside the test's own handler would leave headless Neovim waiting.
+      '-u', init, '-c', ("lua local ok, err = pcall(dofile, '%s') if not ok then io.stderr:write(err, '\\n') vim.cmd('cquit') end"):format(file),
     }
     local label = file or table.concat(cmd, ' ')
     io.stdout:write(('==> %s\n'):format(label))
-    local result = vim.system(cmd, { cwd = root, stdout = write, stderr = write }):wait()
+    local result = vim.system(cmd, { cwd = root, stdout = write, stderr = write }):wait(600000)
     io.stdout:write('\n')
-    if result.code ~= 0 then table.insert(failed, label) end
+    if result.code ~= 0 or result.signal ~= 0 then table.insert(failed, label) end
   end
 end
 
