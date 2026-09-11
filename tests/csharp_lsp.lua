@@ -1,5 +1,8 @@
 local root = vim.fn.tempname()
 local ok, err = xpcall(function()
+  -- Startup installs parsers asynchronously; a fresh CI runner has no C# parser yet.
+  require('nvim-treesitter').install({ 'c_sharp' }):wait(120000)
+  assert(vim.treesitter.language.add('c_sharp'), 'C# parser installation failed')
   vim.fn.mkdir(root .. '/src/App', 'p')
   root = vim.uv.fs_realpath(root)
   vim.fn.writefile({}, root .. '/src/App/App.csproj')
