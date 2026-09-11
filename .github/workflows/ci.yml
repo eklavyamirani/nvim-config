@@ -100,3 +100,13 @@ jobs:
       - name: Exercise language servers
         if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua lsp
+
+  # One stable name for branch protection to require, so the matrix can change freely.
+  ci:
+    name: CI
+    if: ${{ always() }}
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check matrix result
+        run: test "${{ needs.test.result }}" = success
