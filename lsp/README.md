@@ -1,4 +1,6 @@
-# Python LSP
+# Language servers
+
+## Python
 
 Python uses Neovim's native `vim.lsp.config` / `vim.lsp.enable` discovery with
 BasedPyright. No additional Neovim plugin or completion engine is required.
@@ -66,3 +68,45 @@ the reviewed commit.
 References: [Neovim LSP](https://neovim.io/doc/user/lsp/),
 [BasedPyright installation](https://docs.basedpyright.com/latest/installation/command-line-and-language-server/),
 [server settings](https://docs.basedpyright.com/latest/configuration/language-server-settings/).
+
+## C#/.NET
+
+C# uses [csharp-ls](https://github.com/razzmatazz/csharp-language-server), a
+Roslyn-based server, through native Neovim LSP. No additional Neovim plugin is
+needed. Install the [.NET 10 SDK or later](https://dotnet.microsoft.com/download)
+(required by the server), plus any SDK required by your project's `global.json`.
+Then install the server separately from project dependencies:
+
+```sh
+dotnet tool install --tool-path ~/.local/share/nvim/csharp-lsp csharp-ls --version 0.27.0
+```
+
+With a custom `XDG_DATA_HOME`, use Neovim's `stdpath('data') .. '/csharp-lsp'`.
+The config falls back to `csharp-ls` on PATH if this installation is absent.
+The .NET runtime must also be discoverable; SDK managers may require setting
+`DOTNET_ROOT` to their SDK installation directory before launching Neovim.
+
+Run `dotnet restore` in your solution/project, then open a `.cs` file with this
+checkout's `bin/nvim-config`. The server starts at the nearest ancestor containing
+`.sln` or `.slnx`, falling back to `.csproj`. Loose C# files without a project do
+not start the server. For multiple solutions in one directory, set
+`vim.lsp.config('csharp_ls', { settings = { csharp = { solutionPathOverride = 'MyApp.slnx' } } })`
+before opening C# files.
+
+The navigation, diagnostic, and completion keys in the Python table also apply
+to C#. Native defaults provide `grn` for rename and `gra` for code actions;
+`:lua vim.lsp.buf.format()` formats on request. No format-on-save is configured.
+Diagnostics have no sign-column glyphs. Server defaults preserve `.editorconfig`
+formatting and leave optional Roslyn analyzers disabled. C# Treesitter uses the
+`c_sharp` parser with Neovim's `cs` filetype.
+
+Use `:checkhealth vim.lsp` to diagnose attachment failures. Build and test with
+`:!dotnet build` and `:!dotnet test` from the solution directory, or use a terminal.
+This setup covers C# project files; it does not configure F#, Razor, or debugging.
+Commit-specific Diffview LSP navigation remains Python-only.
+
+Run configuration/root-discovery checks without the SDK:
+
+```sh
+bin/nvim-config --headless -u init.lua -c "lua dofile('tests/csharp_lsp.lua')"
+```

@@ -9,7 +9,7 @@ vim.o.termguicolors = true  -- must be set before colorscheme
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 require('config.plugins')
-vim.lsp.enable('basedpyright')
+vim.lsp.enable({ 'basedpyright', 'csharp_ls' })
 require('config.diffview_lsp').setup()
 
 local notify = require('mini.notify')
