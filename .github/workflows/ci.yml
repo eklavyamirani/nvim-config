@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         neovim: [v0.12.5, nightly]
     env:
       XDG_DATA_HOME: ${{ github.workspace }}/.ci/data
@@ -31,17 +31,19 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Install Neovim (Linux)
-        if: runner.os == 'Linux'
+      - name: Install Neovim (Linux/macOS)
+        if: runner.os != 'Windows'
         env:
           NEOVIM_VERSION: ${{ matrix.neovim }}
+          # macos-latest runners are Apple Silicon.
+          NEOVIM_BUILD: ${{ runner.os == 'macOS' && 'nvim-macos-arm64' || 'nvim-linux-x86_64' }}
         run: |
           archive="$RUNNER_TEMP/nvim.tar.gz"
           curl --fail --location --retry 5 --retry-all-errors \
             --output "$archive" \
-            "https://github.com/neovim/neovim/releases/download/$NEOVIM_VERSION/nvim-linux-x86_64.tar.gz"
-          sudo tar --extract --gzip --file "$archive" --directory /opt
-          echo /opt/nvim-linux-x86_64/bin >> "$GITHUB_PATH"
+            "https://github.com/neovim/neovim/releases/download/$NEOVIM_VERSION/$NEOVIM_BUILD.tar.gz"
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$NEOVIM_BUILD/bin" >> "$GITHUB_PATH"
       - name: Install Neovim (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -63,8 +65,8 @@ jobs:
         run: $([ "$RUNNER_OS" = Linux ] && echo sudo) npm install --global tree-sitter-cli@0.27.0
       - name: Choose config directory
         run: echo "XDG_CONFIG_HOME=$RUNNER_TEMP/config" >> "$GITHUB_ENV"
-      - name: Expose checkout as the Neovim config (Linux)
-        if: runner.os == 'Linux'
+      - name: Expose checkout as the Neovim config (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           mkdir -p "$XDG_CONFIG_HOME"
           ln -s "$GITHUB_WORKSPACE" "$XDG_CONFIG_HOME/nvim"

@@ -101,7 +101,7 @@ make test NVIM=bin/nvim-config
 ```
 
 On Windows, run the same suites with `nvim -l scripts/run_tests.lua`, optionally
-naming suites (`check`, `config`, `review`, `lsp`). CI runs every suite on Linux
+naming suites (`check`, `config`, `review`, `lsp`). CI runs every suite on Linux, macOS,
 and Windows.
 
 `make test` checks the inventory, loaded editor settings, and review behavior,
