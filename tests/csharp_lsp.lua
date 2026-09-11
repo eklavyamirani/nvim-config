@@ -14,7 +14,7 @@ local ok, err = xpcall(function()
   local function check_root(expected)
     local actual
     config.root_dir(buf, function(dir) actual = dir end)
-    assert(actual == expected, ('expected root %s, got %s'):format(tostring(expected), tostring(actual)))
+    assert((actual and vim.fs.normalize(actual)) == (expected and vim.fs.normalize(expected)), ('expected root %s, got %s'):format(tostring(expected), tostring(actual)))
   end
   check_root(root .. '/src/App')
   vim.fn.writefile({}, root .. '/App.slnx')

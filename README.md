@@ -84,6 +84,7 @@ documentation. Tests use temporary repositories for their review data.
 | `lsp/basedpyright.lua` | Native Python server configuration |
 | `lua/config/lsp_servers.lua` | Enabled language servers, install steps, and executable resolution |
 | `scripts/install_deps.lua` | Cross-platform language-server installer (`make deps`) |
+| `scripts/run_tests.lua` | Cross-platform test runner behind the `make` test targets |
 | `nvim-pack-lock.json` | Committed plugin versions |
 | `bin/nvim-config` | Launch Neovim with this checkout's configuration |
 | `tests/config_spec.json` | Declared configuration inventory checked by `scripts/check_config.py` |
@@ -98,6 +99,10 @@ modules and lockfile:
 bin/nvim-config --headless -u init.lua +qa
 make test NVIM=bin/nvim-config
 ```
+
+On Windows, run the same suites with `nvim -l scripts/run_tests.lua`, optionally
+naming suites (`check`, `config`, `review`, `lsp`). CI runs every suite on Linux, macOS,
+and Windows.
 
 `make test` checks the inventory, loaded editor settings, and review behavior,
 including grouping, selection capture, full follow-up history, persistence,
