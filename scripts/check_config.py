@@ -20,8 +20,8 @@ def fail(kind: str, expected: set, actual: set) -> None:
 
 
 def main() -> None:
-    spec = json.loads(SPEC.read_text())
-    source = "\n".join(path.read_text() for path in CONFIG_FILES)
+    spec = json.loads(SPEC.read_text(encoding="utf-8"))
+    source = "\n".join(path.read_text(encoding="utf-8") for path in CONFIG_FILES)
 
     plugins = set(re.findall(r"\{\s*src\s*=\s*'https://github\.com/([^']+)'", source))
     fail("plugin", set(spec["plugins"]), plugins)

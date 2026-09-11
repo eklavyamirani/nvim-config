@@ -1,22 +1,24 @@
-.PHONY: test check-config test-config test-review
+.PHONY: deps test check-config test-config test-review test-lsp
 
+# Thin wrappers over the cross-platform scripts; on Windows run them with `nvim -l` directly.
 NVIM ?= nvim
-NVIM_HEADLESS = $(NVIM) --headless --cmd "set runtimepath^=$(CURDIR)"
+RUN_TESTS = $(NVIM) -l scripts/run_tests.lua
 
-test: check-config test-config test-review
+test:
+	$(RUN_TESTS) check config review
+
+deps:
+	$(NVIM) -l scripts/install_deps.lua
 
 check-config:
-	python3 scripts/check_config.py
+	$(RUN_TESTS) check
 
 test-config:
-	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/config.lua')"
-	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/csharp_lsp.lua')"
+	$(RUN_TESTS) config
 
 test-review:
-	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_context.lua')"
-	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_route.lua')"
-	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_tree.lua')"
-	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_group_tree.lua')"
-	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_worktree.lua')"
-	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/review_startup.lua')"
-	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/review_reading.lua')"
+	$(RUN_TESTS) review
+
+# Needs the servers from `make deps`.
+test-lsp:
+	$(RUN_TESTS) lsp
