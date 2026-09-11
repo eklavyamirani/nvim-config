@@ -123,6 +123,11 @@ if ok_ts then
   local languages = { 'lua', 'vim', 'vimdoc', 'markdown', 'markdown_inline', 'bash', 'json', 'yaml', 'c_sharp' }
   ts.install(languages)
   vim.api.nvim_create_autocmd('FileType', {
+    -- FileType matches Neovim's detected filetype, not the file extension:
+    -- Extension | Filetype | Treesitter parser
+    -- .md       | markdown | markdown
+    -- .cs       | cs       | c_sharp
+    -- Install 'c_sharp', but match 'cs' here to start C# highlighting.
     pattern = vim.list_extend(vim.tbl_filter(function(lang) return lang ~= 'c_sharp' end, languages), { 'cs' }),
     callback = function()
       vim.treesitter.start()
