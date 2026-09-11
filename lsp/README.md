@@ -1,12 +1,31 @@
 # Language servers
 
+## Installing servers
+
+Every enabled server is listed in `lua/config/lsp_servers.lua`, with where it installs
+under `stdpath('data')` and how to install it. Install or update all of them with:
+
+```sh
+make deps                          # macOS/Linux
+nvim -l scripts/install_deps.lua   # any platform, including Windows
+```
+
+Pass server names (e.g. `nvim -l scripts/install_deps.lua csharp_ls`) to install
+only some. Prerequisites must already be on PATH: Python 3 for BasedPyright and the
+.NET 10 SDK for csharp-ls. Each server falls back to its executable on PATH when
+its installation is absent.
+
+To add a server, create `lsp/<name>.lua`, register it with install steps in
+`lua/config/lsp_servers.lua` (servers are enabled from there), and add its expected
+install path to `tests/lsp_servers.lua`, which fails when these disagree.
+
 ## Python
 
 Python uses Neovim's native `vim.lsp.config` / `vim.lsp.enable` discovery with
 BasedPyright. No additional Neovim plugin or completion engine is required.
 
 The server is installed in `~/.local/share/nvim/python-lsp`, independently of
-project dependencies. Reproduce that installation from this worktree:
+project dependencies. `make deps` runs the equivalent of:
 
 ```sh
 python3 -m venv ~/.local/share/nvim/python-lsp
@@ -75,7 +94,8 @@ C# uses [csharp-ls](https://github.com/razzmatazz/csharp-language-server), a
 Roslyn-based server, through native Neovim LSP. No additional Neovim plugin is
 needed. Install the [.NET 10 SDK or later](https://dotnet.microsoft.com/download)
 (required by the server), plus any SDK required by your project's `global.json`.
-Then install the server separately from project dependencies:
+Then run `make deps`, which installs the server separately from project
+dependencies, equivalent to:
 
 ```sh
 dotnet tool install --tool-path ~/.local/share/nvim/csharp-lsp csharp-ls --version 0.27.0

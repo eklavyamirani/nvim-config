@@ -39,6 +39,11 @@ jobs:
           sudo tar --extract --gzip --file "$archive" --directory /opt
           echo /opt/nvim-linux-x86_64/bin >> "$GITHUB_PATH"
           /opt/nvim-linux-x86_64/bin/nvim --version
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Install language servers
+        run: make deps
       - name: Install parser compiler
         run: sudo npm install --global tree-sitter-cli@0.27.0
       - name: Expose checkout as the Neovim config
@@ -60,6 +65,8 @@ jobs:
         run: make test-config
       - name: Exercise review customizations
         run: make test-review
+      - name: Exercise language servers
+        run: make test-lsp
 
   windows:
     name: Windows language servers
@@ -77,6 +84,12 @@ jobs:
           Expand-Archive -Path $archive -DestinationPath C:\
           "C:\nvim-win64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
           C:\nvim-win64\bin\nvim.exe --version
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Install language servers
+        shell: pwsh
+        run: nvim -l scripts/install_deps.lua
       - name: Exercise language-server resolution
         shell: pwsh
         run: nvim --headless --cmd "set runtimepath^=$env:GITHUB_WORKSPACE" -u NONE -c "lua dofile('tests/lsp_servers.lua')"

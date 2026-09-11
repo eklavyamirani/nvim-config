@@ -79,6 +79,10 @@ When in doubt, lean toward less. The owner will ask for more if needed.
 - **File layout:** `init.lua` for editor settings + keymaps; `lua/config/plugins.lua`
   for `vim.pack.add` and per-plugin `setup()`. Don't sprawl into many files
   unless the config grows substantially.
+- **Language servers:** every external server dependency is registered in
+  `lua/config/lsp_servers.lua` with its install steps, so `make deps` installs
+  it on every platform. Resolve executables through `executable()`, never a
+  hardcoded path; see [lsp/README.md](lsp/README.md#installing-servers).
 - **Plugin setup pattern:** use the local `setup(name, opts)` helper in
   `plugins.lua` for any plugin whose only configuration is `require('x').setup(...)`.
   For plugins needing more (treesitter, gitsigns `on_attach`, fzf-lua keymaps,

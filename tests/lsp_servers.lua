@@ -1,3 +1,4 @@
+local repo = vim.fs.dirname(vim.fs.dirname(vim.fs.abspath(debug.getinfo(1, 'S').source:sub(2))))
 local data = vim.fn.stdpath('data')
 local windows = vim.fn.has('win32') == 1
 local exe = windows and '.exe' or ''
@@ -19,6 +20,16 @@ local function stub(path)
   table.insert(created, path)
 end
 local ok, err = xpcall(function()
+  local registered = require('config.lsp_servers').servers
+  local configs = {}
+  for _, path in ipairs(vim.fn.globpath(repo, 'lsp/*.lua', false, true)) do
+    configs[vim.fn.fnamemodify(path, ':t:r')] = true
+  end
+  for name in pairs(vim.tbl_extend('force', configs, registered, expected)) do
+    assert(configs[name] and registered[name] and expected[name],
+      name .. ' must have an lsp/ config, a config.lsp_servers entry with install steps, and an expected path here')
+    assert(type(registered[name].install) == 'function', name .. ' has no install steps')
+  end
   for _, path in pairs(expected) do stub(path) end
   local root = vim.uv.cwd()
   for name, path in pairs(expected) do

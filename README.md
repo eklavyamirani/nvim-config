@@ -82,7 +82,8 @@ documentation. Tests use temporary repositories for their review data.
 | `lua/config/diffview_lsp.lua` | Commit-specific Python definition, hover, and references |
 | `lsp/csharp_ls.lua` | Native C# server configuration |
 | `lsp/basedpyright.lua` | Native Python server configuration |
-| `lua/config/lsp_servers.lua` | Language-server install locations and executable resolution |
+| `lua/config/lsp_servers.lua` | Enabled language servers, install steps, and executable resolution |
+| `scripts/install_deps.lua` | Cross-platform language-server installer (`make deps`) |
 | `nvim-pack-lock.json` | Committed plugin versions |
 | `bin/nvim-config` | Launch Neovim with this checkout's configuration |
 | `tests/config_spec.json` | Declared configuration inventory checked by `scripts/check_config.py` |
@@ -104,12 +105,13 @@ errors, navigation, and notification copying. Keep the inventory in sync when
 adding mappings or autocmd events. A startup error or unexpected stderr is a
 failure.
 
-For Python LSP or Diffview navigation changes, install the server as described
-in [lsp/README.md](lsp/README.md), then also run:
+For Python LSP or Diffview navigation changes, install the language servers
+(see [lsp/README.md](lsp/README.md#installing-servers)), then also run:
 
 ```sh
-bin/nvim-config --headless -u init.lua -c "lua dofile('tests/python_lsp.lua')"
-bin/nvim-config --headless -u init.lua -c "lua dofile('tests/diffview_lsp.lua')"
+make deps NVIM=bin/nvim-config
+make test-lsp NVIM=bin/nvim-config
 ```
 
-These two LSP tests are separate from `make test` and are not run by CI.
+`test-lsp` is separate from `make test` because it needs the installed servers;
+CI installs them and runs it.
