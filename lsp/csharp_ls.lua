@@ -1,9 +1,7 @@
-local installed = vim.fn.stdpath('data') .. '/csharp-lsp/csharp-ls'
-
 return {
   cmd = function(dispatchers, config)
     -- csharp-ls discovers the solution from its working directory.
-    return vim.lsp.rpc.start({ vim.uv.fs_stat(installed) and installed or 'csharp-ls' }, dispatchers, {
+    return vim.lsp.rpc.start({ require('config.lsp_servers').executable('csharp_ls') }, dispatchers, {
       cwd = config.root_dir,
     })
   end,

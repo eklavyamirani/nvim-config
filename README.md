@@ -82,6 +82,7 @@ documentation. Tests use temporary repositories for their review data.
 | `lua/config/diffview_lsp.lua` | Commit-specific Python definition, hover, and references |
 | `lsp/csharp_ls.lua` | Native C# server configuration |
 | `lsp/basedpyright.lua` | Native Python server configuration |
+| `lua/config/lsp_servers.lua` | Language-server install locations and executable resolution |
 | `nvim-pack-lock.json` | Committed plugin versions |
 | `bin/nvim-config` | Launch Neovim with this checkout's configuration |
 | `tests/config_spec.json` | Declared configuration inventory checked by `scripts/check_config.py` |

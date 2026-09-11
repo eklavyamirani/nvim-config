@@ -1,7 +1,5 @@
-local installed = vim.fn.stdpath('data') .. '/python-lsp/bin/basedpyright-langserver'
-
 return {
-  cmd = { vim.uv.fs_stat(installed) and installed or 'basedpyright-langserver', '--stdio' },
+  cmd = { require('config.lsp_servers').executable('basedpyright'), '--stdio' },
   filetypes = { 'python' },
   root_markers = { 'pyrightconfig.json', 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', '.git' },
   settings = {
