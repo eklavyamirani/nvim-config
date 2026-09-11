@@ -87,7 +87,8 @@
   },
   "autocmd_events": ["VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User"],
   "behaviors": {
-    "tests/csharp_lsp.lua": "Native C# activation, solution/project roots, server cwd, protocol language and parser mapping",
+    "tests/csharp_lsp.lua": "Native C# activation, solution/project roots, protocol language and parser mapping",
+    "tests/lsp_servers.lua": "Installed language-server executables per platform (Windows .exe/Scripts) and C# project-root cwd",
     "tests/config.lua": "Startup, options, mappings, plugins, commands, autocmds, and AI clipboard formatting",
     "tests/review_context.lua": "Explanation panes, exact selections, private notes, request ordering, and recovery",
     "tests/review_route.lua": "Committed-diff ordering, marks, persistence, migration, and assistant routing",

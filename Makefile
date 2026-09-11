@@ -11,6 +11,7 @@ check-config:
 test-config:
 	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/config.lua')"
 	$(NVIM_HEADLESS) -u init.lua -c "lua dofile('tests/csharp_lsp.lua')"
+	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/lsp_servers.lua')"
 
 test-review:
 	$(NVIM_HEADLESS) -u NONE -c "lua dofile('tests/review_context.lua')"

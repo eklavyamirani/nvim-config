@@ -60,3 +60,23 @@ jobs:
         run: make test-config
       - name: Exercise review customizations
         run: make test-review
+
+  windows:
+    name: Windows language servers
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      XDG_DATA_HOME: ${{ github.workspace }}\.ci\data
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install Neovim
+        shell: pwsh
+        run: |
+          $archive = "$env:RUNNER_TEMP\nvim.zip"
+          Invoke-WebRequest -Uri https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-win64.zip -OutFile $archive
+          Expand-Archive -Path $archive -DestinationPath C:\
+          "C:\nvim-win64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          C:\nvim-win64\bin\nvim.exe --version
+      - name: Exercise language-server resolution
+        shell: pwsh
+        run: nvim --headless --cmd "set runtimepath^=$env:GITHUB_WORKSPACE" -u NONE -c "lua dofile('tests/lsp_servers.lua')"

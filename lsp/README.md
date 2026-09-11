@@ -109,4 +109,5 @@ Run configuration/root-discovery checks without the SDK:
 
 ```sh
 bin/nvim-config --headless -u init.lua -c "lua dofile('tests/csharp_lsp.lua')"
+bin/nvim-config --headless -u NONE -c "lua dofile('tests/lsp_servers.lua')"
 ```
