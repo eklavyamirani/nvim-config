@@ -35,7 +35,7 @@ local function snapshot(ctx, done)
   item = { root = vim.fn.tempname(), waiters = { done } }
   snapshots[key] = item
   vim.uv.fs_mkdir(item.root, 448)
-  item.root = vim.uv.fs_realpath(item.root) or item.root
+  item.root = vim.fs.normalize(vim.uv.fs_realpath(item.root) or item.root)
   local archive = item.root .. '.tar'
   local function finish(err)
     vim.uv.fs_unlink(archive)
@@ -48,17 +48,23 @@ local function snapshot(ctx, done)
   vim.system({ 'git', '-C', ctx.repo, 'archive', '--format=tar', '--output=' .. archive, ctx.commit },
     { text = true }, vim.schedule_wrap(function(result)
       if result.code ~= 0 then finish(result.stderr); return end
-      vim.system({ 'tar', '-xf', archive, '-C', item.root }, { text = true }, vim.schedule_wrap(function(out)
+      -- GNU tar (first on PATH in Git Bash) reads `C:` in an absolute path as a remote host.
+      vim.system({ 'tar', '-xf', '../' .. vim.fs.basename(archive) }, { cwd = item.root, text = true }, vim.schedule_wrap(function(out)
         finish(out.code ~= 0 and out.stderr or nil)
       end))
     end))
 end
 
+-- A path relative to the snapshot root, or nil outside it; normalizing handles Windows separators.
+local function relative(item, path)
+  path = vim.fs.normalize(path)
+  if path:sub(1, #item.root + 1) == item.root .. '/' then return path:sub(#item.root + 2) end
+end
+
 local function buffer(item, ctx)
   local path = item.root .. '/' .. ctx.path
   local real = vim.uv.fs_realpath(path)
-  local root = vim.uv.fs_realpath(item.root)
-  if not real or real:sub(1, #root + 1) ~= root .. '/' then
+  if not real or not relative(item, real) then
     warn('Source is absent from the Git archive or points outside it: ' .. ctx.path)
     return
   end
@@ -184,19 +190,20 @@ function M.request(method)
         local function select(target)
           if not target or not current() then return end
           local path = vim.uri_to_fname(target.uri or target.targetUri)
-          if path:sub(1, #item.root + 1) ~= item.root .. '/' then
+          local rel = relative(item, path)
+          if not rel then
             warn(label .. ' outside this commit: ' .. path)
             return
           end
           history[view.tabpage] = history[view.tabpage] or {}
           table.insert(history[view.tabpage], { ctx = ctx, item = item, cursor = cursor, win = win, buf = source })
-          jump(view, item, { repo = ctx.repo, commit = ctx.commit, path = path:sub(#item.root + 2) },
+          jump(view, item, { repo = ctx.repo, commit = ctx.commit, path = rel },
             target.targetSelectionRange or target.range, client.offset_encoding)
         end
         if #locations == 1 then select(locations[1]) else
           vim.ui.select(locations, { prompt = label .. ' at ' .. ctx.commit:sub(1, 7), format_item = function(loc)
             local path = vim.uri_to_fname(loc.uri or loc.targetUri)
-            if path:sub(1, #item.root + 1) == item.root .. '/' then path = path:sub(#item.root + 2) end
+            path = relative(item, path) or path
             local start = (loc.targetSelectionRange or loc.range).start
             return ('%s:%d:%d'):format(path, start.line + 1, start.character + 1)
           end }, select)
