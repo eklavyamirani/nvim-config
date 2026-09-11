@@ -7,6 +7,12 @@ local expected = {
   basedpyright = data .. '/python-lsp/' .. (windows and 'Scripts' or 'bin') .. '/basedpyright-langserver' .. exe,
   csharp_ls = data .. '/csharp-lsp/csharp-ls' .. exe,
 }
+-- Windows paths are case-insensitive, and exepath() takes the extension's case from PATHEXT.
+local function same_path(a, b)
+  a, b = vim.fs.normalize(a), vim.fs.normalize(b)
+  if windows then a, b = a:lower(), b:lower() end
+  return a == b
+end
 local created = {}
 local function stub(path)
   if vim.uv.fs_stat(path) then return end
@@ -43,7 +49,7 @@ local ok, err = xpcall(function()
       assert(success, failure)
     end
     assert(cwd == root, name .. ' did not start in the project root')
-    assert(type(cmd) == 'table' and vim.fs.normalize(cmd[1]) == vim.fs.normalize(path),
+    assert(type(cmd) == 'table' and same_path(cmd[1], path),
       ('%s: expected installed server %s, got %s'):format(name, path, type(cmd) == 'table' and cmd[1]))
   end
 end, debug.traceback)
