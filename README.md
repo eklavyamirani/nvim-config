@@ -2,7 +2,7 @@
 
 This configuration uses Neovim 0.12+, native `vim.pack`, and a committed plugin
 lockfile. It includes Diffview review tools, persistent code-explanation threads,
-and native Python LSP with BasedPyright. CI targets Neovim 0.12.5 and nightly.
+and native Python (BasedPyright) and C# (csharp-ls) LSP. CI targets Neovim 0.12.5 and nightly.
 
 ## Start a development session
 
@@ -48,6 +48,10 @@ unchanged files open read-only, and `Ctrl-t` returns to the source position.
 The server is installed separately from plugins and project dependencies; see
 the [Python LSP guide](lsp/README.md) for installation and supported snapshots.
 
+C# files use native LSP with csharp-ls and Treesitter highlighting. See the
+[C#/.NET setup guide](lsp/README.md#cnet) for SDK/server installation, project
+roots, and commands.
+
 ## Current limitations
 
 AI grouping uses file metadata and sampled diffs. It has no interaction for
@@ -76,6 +80,7 @@ documentation. Tests use temporary repositories for their review data.
 | `lua/config/review_route.lua` | Review groups, ordering, marks, trees, and reading positions |
 | `lua/config/review_context.lua` | Captured source, assistant requests, conversation panes, private persistence |
 | `lua/config/diffview_lsp.lua` | Commit-specific Python definition, hover, and references |
+| `lsp/csharp_ls.lua` | Native C# server configuration |
 | `lsp/basedpyright.lua` | Native Python server configuration |
 | `nvim-pack-lock.json` | Committed plugin versions |
 | `bin/nvim-config` | Launch Neovim with this checkout's configuration |

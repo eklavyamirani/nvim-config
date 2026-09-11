@@ -1,0 +1,45 @@
+local root = vim.fn.tempname()
+local ok, err = xpcall(function()
+  -- Startup installs parsers asynchronously; a fresh CI runner has no C# parser yet.
+  require('nvim-treesitter').install({ 'c_sharp' }):wait(120000)
+  assert(vim.treesitter.language.add('c_sharp'), 'C# parser installation failed')
+  vim.fn.mkdir(root .. '/src/App', 'p')
+  root = vim.uv.fs_realpath(root)
+  vim.fn.writefile({}, root .. '/src/App/App.csproj')
+  local buf = vim.api.nvim_create_buf(false, false)
+  vim.api.nvim_buf_set_name(buf, root .. '/src/App/Program.cs')
+  local config = vim.lsp.config.csharp_ls
+  assert(vim.lsp.is_enabled('csharp_ls'), 'C# LSP is not enabled')
+  assert(config.get_language_id(buf, 'cs') == 'csharp', 'wrong protocol language ID')
+  local function check_root(expected)
+    local actual
+    config.root_dir(buf, function(dir) actual = dir end)
+    assert(actual == expected, ('expected root %s, got %s'):format(tostring(expected), tostring(actual)))
+  end
+  check_root(root .. '/src/App')
+  vim.fn.writefile({}, root .. '/App.slnx')
+  check_root(root)
+  vim.fn.delete(root .. '/App.slnx')
+  vim.fn.writefile({}, root .. '/App.sln')
+  check_root(root)
+  vim.fn.delete(root .. '/App.sln')
+  vim.fn.delete(root .. '/src/App/App.csproj')
+  check_root(nil)
+  local original = vim.lsp.rpc.start
+  local called, cwd
+  vim.lsp.rpc.start = function(_, _, opts) called, cwd = true, opts.cwd end
+  local success, failure = pcall(config.cmd, {}, { root_dir = root })
+  vim.lsp.rpc.start = original
+  assert(success, failure)
+  assert(called and cwd == root, 'server did not start in the project root')
+  assert(vim.filetype.match({ filename = 'Program.cs' }) == 'cs', 'wrong C# filetype')
+  assert(vim.treesitter.language.get_lang('cs') == 'c_sharp', 'wrong C# parser mapping')
+  vim.api.nvim_set_current_buf(buf)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { 'class Program { }' })
+  vim.bo[buf].filetype = 'cs'
+  assert(vim.treesitter.highlighter.active[buf], 'C# highlighting did not start')
+end, debug.traceback)
+vim.fn.delete(root, 'rf')
+if not ok then print(err); vim.cmd('cquit') end
+print('PASS: C# LSP activation, solution/project roots, server cwd, language ID and parser mapping.')
+vim.cmd('qa!')
