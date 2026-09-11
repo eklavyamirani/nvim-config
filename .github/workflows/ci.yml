@@ -85,11 +85,16 @@ jobs:
           key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('nvim-pack-lock.json', 'lua/config/plugins.lua') }}
       - name: Install locked plugins
         run: nvim --headless --cmd "set runtimepath^=$GITHUB_WORKSPACE" -u init.lua +qa
+      # Run every suite even when an earlier one fails.
       - name: Check configuration specification
+        if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua check
       - name: Exercise editor configuration
+        if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua config
       - name: Exercise review customizations
+        if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua review
       - name: Exercise language servers
+        if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua lsp
