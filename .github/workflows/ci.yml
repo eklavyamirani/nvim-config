@@ -14,21 +14,25 @@ concurrency:
 
 jobs:
   test:
-    name: Neovim ${{ matrix.neovim }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    name: ${{ matrix.os }} / Neovim ${{ matrix.neovim }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         neovim: [v0.12.5, nightly]
     env:
-      XDG_CONFIG_HOME: /tmp/nvim-ci/config
       XDG_DATA_HOME: ${{ github.workspace }}/.ci/data
       XDG_STATE_HOME: ${{ github.workspace }}/.ci/state
       XDG_CACHE_HOME: ${{ github.workspace }}/.ci/cache
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Install Neovim
+      - name: Install Neovim (Linux)
+        if: runner.os == 'Linux'
         env:
           NEOVIM_VERSION: ${{ matrix.neovim }}
         run: |
@@ -38,58 +42,54 @@ jobs:
             "https://github.com/neovim/neovim/releases/download/$NEOVIM_VERSION/nvim-linux-x86_64.tar.gz"
           sudo tar --extract --gzip --file "$archive" --directory /opt
           echo /opt/nvim-linux-x86_64/bin >> "$GITHUB_PATH"
-          /opt/nvim-linux-x86_64/bin/nvim --version
+      - name: Install Neovim (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          NEOVIM_VERSION: ${{ matrix.neovim }}
+        run: |
+          $archive = "$env:RUNNER_TEMP\nvim.zip"
+          Invoke-WebRequest -Uri "https://github.com/neovim/neovim/releases/download/$env:NEOVIM_VERSION/nvim-win64.zip" -OutFile $archive
+          Expand-Archive -Path $archive -DestinationPath C:\
+          "C:\nvim-win64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Show Neovim version
+        run: nvim --version
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: 10.0.x
       - name: Install language servers
-        run: make deps
+        run: nvim -l scripts/install_deps.lua
       - name: Install parser compiler
-        run: sudo npm install --global tree-sitter-cli@0.27.0
-      - name: Expose checkout as the Neovim config
+        run: $([ "$RUNNER_OS" = Linux ] && echo sudo) npm install --global tree-sitter-cli@0.27.0
+      - name: Choose config directory
+        run: echo "XDG_CONFIG_HOME=$RUNNER_TEMP/config" >> "$GITHUB_ENV"
+      - name: Expose checkout as the Neovim config (Linux)
+        if: runner.os == 'Linux'
         run: |
           mkdir -p "$XDG_CONFIG_HOME"
           ln -s "$GITHUB_WORKSPACE" "$XDG_CONFIG_HOME/nvim"
+      # Junctions need no elevation, unlike symlinks.
+      - name: Expose checkout as the Neovim config (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:XDG_CONFIG_HOME | Out-Null
+          New-Item -ItemType Junction -Path "$env:XDG_CONFIG_HOME\nvim" -Target $env:GITHUB_WORKSPACE | Out-Null
       - name: Restore plugins and parsers
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
+          # Neovim appends -data to the app name on Windows.
           path: |
             .ci/data/nvim/site
-            .ci/data/nvim/site/parser
+            .ci/data/nvim-data/site
           key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('nvim-pack-lock.json', 'lua/config/plugins.lua') }}
       - name: Install locked plugins
         run: nvim --headless --cmd "set runtimepath^=$GITHUB_WORKSPACE" -u init.lua +qa
       - name: Check configuration specification
-        run: make check-config
+        run: nvim -l scripts/run_tests.lua check
       - name: Exercise editor configuration
-        run: make test-config
+        run: nvim -l scripts/run_tests.lua config
       - name: Exercise review customizations
-        run: make test-review
+        run: nvim -l scripts/run_tests.lua review
       - name: Exercise language servers
-        run: make test-lsp
-
-  windows:
-    name: Windows language servers
-    runs-on: windows-latest
-    timeout-minutes: 10
-    env:
-      XDG_DATA_HOME: ${{ github.workspace }}\.ci\data
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Install Neovim
-        shell: pwsh
-        run: |
-          $archive = "$env:RUNNER_TEMP\nvim.zip"
-          Invoke-WebRequest -Uri https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-win64.zip -OutFile $archive
-          Expand-Archive -Path $archive -DestinationPath C:\
-          "C:\nvim-win64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-          C:\nvim-win64\bin\nvim.exe --version
-      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
-        with:
-          dotnet-version: 10.0.x
-      - name: Install language servers
-        shell: pwsh
-        run: nvim -l scripts/install_deps.lua
-      - name: Exercise language-server resolution
-        shell: pwsh
-        run: nvim --headless --cmd "set runtimepath^=$env:GITHUB_WORKSPACE" -u NONE -c "lua dofile('tests/lsp_servers.lua')"
+        run: nvim -l scripts/run_tests.lua lsp
