@@ -49,10 +49,18 @@ needs one. Missing third-party packages can still produce import diagnostics.
 | `gd` | Go to definition |
 | `grr` | Find references (native default) |
 | `<C-s>` in Insert mode | Signature help (native default) |
-| `<C-x><C-o>` in Insert mode | Native omnifunc completion |
+| `<C-x><C-o>` in Insert mode | Manually request LSP completion |
+| `<C-n>` / `<C-p>` with completion menu open | Next/previous suggestion |
+| `<C-y>` / `<C-e>` with completion menu open | Accept/dismiss suggestion |
 | `<leader>ld` | Diagnostic details |
 | `[d` / `]d` | Previous/next diagnostic (native defaults) |
 | `<C-t>` | Return after a definition jump |
+
+Native LSP suggestions appear automatically on server-advertised trigger
+characters, such as `.`, in Python and C# buffers with an attached server.
+Use `<C-x><C-o>` in Insert mode to request suggestions at other times.
+Nothing is selected automatically; choose a suggestion and accept with `<C-y>`.
+The selected suggestion's documentation appears in a popup when available.
 
 Diagnostics use basic type checking and no sign-column glyphs. Tagged hint
 dimming, automatic f-string changes, and automatic baseline-file updates are

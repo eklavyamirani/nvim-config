@@ -9,6 +9,14 @@ vim.o.termguicolors = true  -- must be set before colorscheme
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 require('config.plugins')
+vim.api.nvim_create_autocmd('LspAttach', {
+  group = vim.api.nvim_create_augroup('lsp_completion', { clear = true }),
+  callback = function(ev)
+    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+    if not client or not client:supports_method('textDocument/completion', ev.buf) then return end
+    vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
+  end,
+})
 vim.lsp.enable(vim.tbl_keys(require('config.lsp_servers').servers))
 require('config.diffview_lsp').setup()
 
@@ -53,6 +61,7 @@ vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
 vim.opt.cursorline = true
 vim.opt.scrolloff = 10
+vim.opt.completeopt = { 'menu', 'menuone', 'noselect', 'popup' }
 
 -- keymaps --
 vim.keymap.set('n', '<leader>ed', function()
