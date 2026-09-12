@@ -16,7 +16,8 @@
     "list": true,
     "cursorline": true,
     "scrolloff": 10,
-    "termguicolors": true
+    "termguicolors": true,
+    "completeopt": "menu,menuone,noselect,popup"
   },
   "listchars": { "tab": "» ", "trail": "·", "nbsp": "␣" },
   "plugins": {
@@ -85,7 +86,7 @@
       "<C-t>": "Diffview LSP: return from source jump"
     }
   },
-  "autocmd_events": ["VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User"],
+  "autocmd_events": ["LspAttach", "VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User"],
   "behaviors": {
     "tests/csharp_lsp.lua": "Native C# activation, solution/project roots, protocol language and parser mapping",
     "tests/lsp_servers.lua": "Installed language-server executables per platform (Windows .exe/Scripts) and C# project-root cwd",
