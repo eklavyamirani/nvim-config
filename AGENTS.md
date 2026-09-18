@@ -113,6 +113,7 @@ When in doubt, lean toward less. The owner will ask for more if needed.
 | Markdown render | `render-markdown.nvim` (minimal opts)  |
 | Code review     | `eklavyamirani/code-review.nvim`       |
 | Python LSP      | Native `vim.lsp` with BasedPyright     |
+| Cursor animation| `sphamba/smear-cursor.nvim` (defaults) |
 
 When proposing a new plugin, justify it against what's already installed
 before adding another.
