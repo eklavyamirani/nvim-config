@@ -1,6 +1,19 @@
 # Cheatsheet
 ---
 
+## LSP Completion (Insert mode)
+
+Python and C# suggestions appear automatically on server-advertised trigger
+characters, such as `.`, when the language server is attached.
+
+| Key | Action |
+| --- | --- |
+| `<C-x><C-o>` (Ctrl-x, then Ctrl-o) | Manually request LSP completion |
+| `<C-n>` / `<C-p>` with the menu open | Next / previous suggestion |
+| `<C-y>` / `<C-e>` with the menu open | Accept / dismiss suggestion |
+
+---
+
 ## Vim External Filters (`!`)
 
 **Usage:** Highlight text in Visual Mode, type `!`, then the command.
