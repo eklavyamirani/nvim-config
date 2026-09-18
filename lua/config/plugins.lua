@@ -19,6 +19,7 @@ vim.pack.add({
   { src = 'https://github.com/eklavyamirani/code-review.nvim' },
   { src = 'https://github.com/ibhagwan/fzf-lua' },
   { src = 'https://github.com/sindrets/diffview.nvim' },
+  { src = 'https://github.com/sphamba/smear-cursor.nvim' },
 })
 
 -- Helper for plugins whose only setup is `require('x').setup()`.
@@ -50,6 +51,7 @@ end
 vim.api.nvim_create_user_command('Notifications', notification_history, { desc = 'Open copyable notification history' })
 vim.keymap.set('n', '<leader>nh', notification_history, { desc = 'Notification history' })
 setup('nvim-autopairs')
+setup('smear_cursor')
 setup('lualine')
 setup('which-key')
 setup('colorizer')

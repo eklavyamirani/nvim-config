@@ -36,7 +36,8 @@
     "nvim-lua/plenary.nvim": "plenary",
     "eklavyamirani/code-review.nvim": "code-review",
     "ibhagwan/fzf-lua": "fzf-lua",
-    "sindrets/diffview.nvim": "diffview"
+    "sindrets/diffview.nvim": "diffview",
+    "sphamba/smear-cursor.nvim": "smear_cursor"
   },
   "keymaps": {
     "n": {
