@@ -166,9 +166,13 @@ The backend defaults to Copilot CLI using its configured model. Authenticate
 with `copilot login` if necessary. To use Claude Code instead, set
 `vim.g.review_context_provider = 'claude'` in `init.lua` (authenticate with
 `claude auth login`). The bridge invokes the executable directly, not your
-shell aliases. It disables assistant tools; the explanation uses the supplied
-selection, up to 25 surrounding lines on either side, and your pinned notes.
-Requests go to the selected assistant provider only when you ask.
+shell aliases. The request includes the selection, up to 25 surrounding lines on
+either side, and your pinned notes. The assistant can also read, search, and
+list other files in the repository, such as an Angular template's component
+class or an unchanged imported definition. It cannot edit files, run commands,
+use MCP servers, or read outside the repository. For a commit pane, it reads a
+temporary copy of that commit, not your working tree; other panes read the
+working tree. Requests go to the selected assistant provider only when you ask.
 
 To ask something specific, select code and press `<leader>aa`, then type your
 question and Enter. For example: “What does this expand to if the path contains

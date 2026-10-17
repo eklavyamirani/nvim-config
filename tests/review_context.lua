@@ -12,12 +12,14 @@ vim.fn.writefile({ 'before', '. "$(dirname "${BASH_SOURCE[0]}")/harness.sh"', 'a
 vim.cmd.edit(source_path)
 local source_win, source_buf = api.nvim_get_current_win(), api.nvim_get_current_buf()
 api.nvim_win_set_cursor(source_win, { 2, 4 })
-local captured = {}
+local captured, read_files = {}, {}
 local module = require('config.review_context')
-module.setup({ command = function(prompt)
+local function record(prompt, tools)
   captured[#captured + 1] = prompt
+  read_files[#read_files + 1] = tools
   return { 'python3', '-c', 'import sys,time; time.sleep(float(sys.argv[1])); print(sys.argv[2])', '0.05', 'Meaning: load the harness.\nKeep: source runs in this shell.' }
-end })
+end
+module.setup({ command = record })
 
 local function answer_buffer()
   for _, buf in ipairs(api.nvim_list_bufs()) do
@@ -73,6 +75,9 @@ assert(vim.deep_equal(api.nvim_win_get_cursor(source_win), { 2, 4 }), 'opening s
 wait_for('Meaning: load')
 assert(captured[1]:find('2  . "$(dirname', 1, true), 'source line numbering lost')
 assert(captured[1]:find('working buffer snapshot', 1, true), 'revision missing')
+assert(read_files[1] == true, 'explanation cannot read other repository files')
+assert(captured[1]:find('repository at the working tree.', 1, true), 'working tree not named as the readable repository')
+assert(captured[1]:find('REPOSITORY PATH: example.sh\n', 1, true), 'repository-relative path missing')
 
 -- Exact charwise selection, including when the cursor precedes its anchor.
 api.nvim_win_set_cursor(source_win, { 2, 13 })
@@ -104,7 +109,16 @@ api.nvim_buf_set_lines(old, 0, -1, false, { 'OLD_REVISION_VALUE=42' })
 package.loaded['diffview.vcs.rev'] = { RevType = { COMMIT = 1, STAGE = 2, CUSTOM = 3 } }
 package.loaded['diffview.lib'] = { get_current_view = function()
   return { cur_layout = { windows = { { file = { bufnr = old, absolute_path = source_path,
-    rev = { type = 1, commit = 'deadbeef01234567' } } } } } }
+    path = 'example.sh', rev = { type = 1, commit = 'deadbeef01234567' } } } } } }
+end }
+-- Commit panes run the assistant in an extracted copy of that commit, not the working tree.
+local snapshot_root = temp .. '/snapshot'
+vim.fn.mkdir(snapshot_root, 'p')
+vim.fn.writefile({ 'FILE_FROM_SNAPSHOT' }, snapshot_root .. '/marker.txt')
+local snapshots = {}
+package.loaded['config.diffview_lsp'] = { snapshot = function(ctx, done)
+  snapshots[#snapshots + 1] = ctx
+  done({ root = snapshot_root })
 end }
 api.nvim_win_set_buf(source_win, old)
 api.nvim_win_set_cursor(source_win, { 1, 0 })
@@ -113,6 +127,12 @@ wait_for('Meaning: load')
 assert(captured[3]:find('OLD_REVISION_VALUE=42', 1, true), 'old revision replaced by working tree')
 assert(captured[3]:find('commit deadbeef01234567', 1, true), 'commit identity missing')
 assert(captured[3]:find('edited private note', 1, true), 'pinned context missing from request')
+assert(captured[3]:find('repository at commit deadbeef01234567.', 1, true), 'commit not named as the readable repository')
+assert(snapshots[1].commit == 'deadbeef01234567' and snapshots[1].repo == vim.uv.fs_realpath(root), 'commit snapshot not requested')
+module.setup({ command = function() return { 'python3', '-c', 'print(open("marker.txt").read())' } end })
+module.explain('line')
+wait_for('FILE_FROM_SNAPSHOT')
+module.setup({ command = record })
 
 -- A selected question captures exact columns and the old revision before input.
 local value_col = ('OLD_REVISION_VALUE=42'):find('42', 1, true) - 1

@@ -57,8 +57,9 @@ roots, and commands.
 AI grouping uses file metadata and sampled diffs. It has no interaction for
 capturing the reviewer's goals before generating groups, and Python LSP analysis
 is not supplied to the grouping request. Explanations use captured code,
-surrounding lines, pinned notes, and conversation context; they do not execute
-the reviewed code. The support panes handle ordinary files and Diffview, but
+surrounding lines, pinned notes, conversation context, and read-only access to
+repository files (for commit panes, a temporary copy of that commit); they do not
+execute the reviewed code. Index-stage panes read the working tree. The support panes handle ordinary files and Diffview, but
 are not adapted to the separate CodeReview plugin's custom buffers.
 
 Commit-specific LSP navigation supports Git commits on either comparison side.

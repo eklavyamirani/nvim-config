@@ -25,7 +25,8 @@ local function context()
   warn('No committed source file in this pane.')
 end
 
-local function snapshot(ctx, done)
+-- Extracted once per commit per session; the review assistant also reads files from it.
+function M.snapshot(ctx, done)
   local key = ctx.repo .. '\n' .. ctx.commit
   local item = snapshots[key]
   if item then
@@ -44,7 +45,7 @@ local function snapshot(ctx, done)
     for _, callback in ipairs(item.waiters) do callback(not err and item or nil) end
     item.waiters = nil
   end
-  vim.notify('Diffview LSP: preparing source at ' .. ctx.commit:sub(1, 7))
+  vim.notify('Diffview: preparing source at ' .. ctx.commit:sub(1, 7))
   vim.system({ 'git', '-C', ctx.repo, 'archive', '--format=tar', '--output=' .. archive, ctx.commit },
     { text = true }, vim.schedule_wrap(function(result)
       if result.code ~= 0 then finish(result.stderr); return end
@@ -153,7 +154,7 @@ function M.request(method)
       and api.nvim_win_get_buf(win) == source and api.nvim_buf_get_changedtick(source) == tick
       and vim.deep_equal(api.nvim_win_get_cursor(win), cursor)
   end
-  snapshot(ctx, function(item)
+  M.snapshot(ctx, function(item)
     if not item or not current() then return end
     local buf = buffer(item, ctx)
     if not buf then return end
