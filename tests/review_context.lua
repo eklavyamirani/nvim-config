@@ -252,7 +252,55 @@ restored.open()
 follow('Continue the older explanation.', 'LEGACY_FOLLOWUP')
 ordered(legacy_prompt, { 'USER:\nLEGACY_QUESTION', 'AI:\nLEGACY_REPLY', 'QUESTION: Continue the older explanation.' })
 restored.close()
+
+-- Read-tool mode: uppercase keys force it, follow-ups inherit it, the global toggles defaults.
+local tool_calls = {}
+restored.setup({ command = function(text, tools)
+  tool_calls[#tool_calls + 1] = { text = text, tools = tools }
+  return { 'python3', '-c', 'print("TOOL_REPLY")' }
+end })
+vim.fn.maparg(' aE', 'n', false, true).callback()
+wait_for('TOOL_REPLY')
+assert(tool_calls[1].tools == true and tool_calls[1].text:find('read-only tools', 1, true), 'aE did not enable tools')
+assert(answer():find('## AI · read tools', 1, true), 'tool answers are not labelled')
+follow('Where is harness.sh defined?', 'TOOL_REPLY')
+assert(tool_calls[2].tools == true, 'follow-up dropped tool mode')
+vim.fn.maparg(' ae', 'n', false, true).callback()
+wait_for('TOOL_REPLY')
+assert(not tool_calls[3].tools and tool_calls[3].text:find('use tools, or follow', 1, true), 'ae used tools by default')
+follow('Plain follow-up.', 'TOOL_REPLY')
+assert(not tool_calls[4].tools, 'plain thread follow-up used tools')
+vim.fn.maparg(' aQ', 'n', false, true).callback(); submit('Now look it up.')
+wait_for('TOOL_REPLY')
+assert(tool_calls[5].tools == true, 'aQ did not force tools')
+vim.cmd('ReviewTools')
+vim.fn.maparg(' aa', 'n', false, true).callback(); submit('Toggled default?')
+wait_for('TOOL_REPLY')
+assert(tool_calls[6].tools == true, ':ReviewTools did not change the default')
+vim.cmd('ReviewTools')
+restored.close()
+
+-- Built-in providers: read tools enable repo instructions and only read-only tools.
+local function argv_for(provider, tools)
+  package.loaded['config.review_context'] = nil
+  local fresh, argv = require('config.review_context'), nil
+  vim.g.review_context_provider = provider
+  local original_system = vim.system
+  vim.system = function(cmd) argv = cmd; return { kill = function() end } end
+  fresh.setup()
+  fresh.explain('line', tools)
+  vim.system = original_system
+  fresh.close()
+  return table.concat(argv, ' ')
+end
+local copilot_plain, copilot_tools = argv_for('copilot', false), argv_for('copilot', true)
+assert(copilot_plain:find('--no-custom-instructions', 1, true) and copilot_plain:find('--available-tools= ', 1, true))
+assert(not copilot_tools:find('--no-custom-instructions', 1, true) and copilot_tools:find('--available-tools=view,glob,grep,rg', 1, true))
+local claude_plain, claude_tools = argv_for('claude', false), argv_for('claude', true)
+assert(claude_plain:find('--tools  ', 1, true) and not claude_plain:find('--allowedTools', 1, true))
+assert(claude_tools:find('--tools Read,Grep,Glob', 1, true) and claude_tools:find('--allowedTools Read,Grep,Glob', 1, true))
+vim.g.review_context_provider = nil
 vim.ui.input = original_input
 
-print('PASS: selections, revisions, complete follow-up transcripts, persistence, legacy recovery, errors, focus and cancellation.')
+print('PASS: selections, revisions, complete follow-up transcripts, persistence, legacy recovery, errors, focus, cancellation and read-tool mode.')
 vim.cmd('qa!')

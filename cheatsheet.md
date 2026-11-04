@@ -160,6 +160,8 @@ Narrow terminals put the support panes below the diff.
 | `<leader>an` | Edit the pinned context pane; `:w` saves |
 | `<leader>ar` / Enter in a support pane | Return to the captured code position |
 | `<leader>ax` / `q` in a support pane | Close support panes and cancel a pending explanation |
+| `<leader>aE` / `<leader>aA` / `<leader>aQ` | Explain / ask / follow up with read-only tools and repo instructions |
+| `:ReviewTools` | Toggle read tools as the default for `ae` / `aa` |
 | `:ReviewContext` | Reopen the last explanation and notes |
 
 The backend defaults to Copilot CLI using its configured model. Authenticate
@@ -169,6 +171,13 @@ with `copilot login` if necessary. To use Claude Code instead, set
 shell aliases. It disables assistant tools; the explanation uses the supplied
 selection, up to 25 surrounding lines on either side, and your pinned notes.
 Requests go to the selected assistant provider only when you ask.
+
+Uppercase keys (`aE`, `aA`, `aQ`) run the same request with read-only file
+tools (Copilot: `view,glob,grep`; Claude: `Read,Grep,Glob`) and load repo
+custom instructions (`AGENTS.md`, `CLAUDE.md`, ...). No shell, edits, or MCP.
+Follow-ups (`aq`) keep the thread's mode. Set `vim.g.review_context_tools = true`
+in `init.lua` (or run `:ReviewTools`) to make lowercase keys use tools too.
+Tool reads see the working tree, not the Diffview revision you selected.
 
 To ask something specific, select code and press `<leader>aa`, then type your
 question and Enter. For example: “What does this expand to if the path contains

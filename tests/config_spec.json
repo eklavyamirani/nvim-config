@@ -70,13 +70,18 @@
       "<leader>aq": "Review: ask a follow-up",
       "<leader>an": "Review: edit pinned notes",
       "<leader>ar": "Review: return to code",
-      "<leader>ax": "Review: close support panes"
+      "<leader>ax": "Review: close support panes",
+      "<leader>aE": "Review: explain with read tools",
+      "<leader>aA": "Review: ask about the current line (read tools)",
+      "<leader>aQ": "Review: ask a follow-up with read tools"
     },
     "x": {
       "<leader>ay": "AI: yank selection to clipboard",
       "<leader>aa": "Review: ask about selected code",
       "<leader>ae": "Review: explain beside the diff",
-      "<leader>ap": "Review: pin selected context"
+      "<leader>ap": "Review: pin selected context",
+      "<leader>aE": "Review: explain with read tools",
+      "<leader>aA": "Review: ask about selected code (read tools)"
     }
   },
   "buffer_keymaps": {
