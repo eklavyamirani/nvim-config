@@ -141,6 +141,32 @@ Keywords: resize, zoom, fullscreen, maximize, split, window, pane.
 
 ---
 
+## Following Links (files, docs, back and forth)
+
+Keywords: link, gf, go to file, jump back, jumplist, markdown link, open path, return.
+
+| Key / Command | Action |
+| --- | --- |
+| `gf` | Open the file path under the cursor in this window |
+| `<C-w>f` | …in a split |
+| `<C-w>gf` | …in a new tab (keeps your place; `:tabc` or `g<Tab>` to return) |
+| `gF` / `<C-w>gF` | Same, and jump to the line in `path:42` |
+| `{Visual}gf` | Open exactly the selected text as a path |
+| `<C-o>` / `<C-i>` | Back / forward through the jumplist (works across files) |
+| `<C-^>` | Toggle to the previous (alternate) file |
+| `:jumps` | List the jumplist |
+| `<C-]>` / `<C-t>` | Follow a `:help` link (or LSP definition) / go back |
+| `gx` | Open the URL or path under the cursor with the system handler |
+
+Relative paths resolve from the current file's directory first, then cwd
+(`'path'` = `.,,`). In Markdown put the cursor on the `(path)` part, not the
+link text. `#` counts as part of a filename, so `gf` on `setup.md#install`
+fails: Visual-select just `setup.md` and press `gf`. The jumplist is per window
+(copied on split): after `<C-w>gf`, `<C-o>` reopens the old file *inside the new
+tab*. To get back to the original tab, close it or `g<Tab>`.
+
+---
+
 ## AI CLI Bridge (clipboard)
 
 ### Explain without leaving the diff
