@@ -291,14 +291,16 @@ local function argv_for(provider, tools)
   fresh.explain('line', tools)
   vim.system = original_system
   fresh.close()
-  return table.concat(argv, ' ')
+  return argv
 end
+local has = vim.tbl_contains
 local copilot_plain, copilot_tools = argv_for('copilot', false), argv_for('copilot', true)
-assert(copilot_plain:find('--no-custom-instructions', 1, true) and copilot_plain:find('--available-tools= ', 1, true))
-assert(not copilot_tools:find('--no-custom-instructions', 1, true) and copilot_tools:find('--available-tools=view,glob,grep,rg', 1, true))
+assert(has(copilot_plain, '--no-custom-instructions') and has(copilot_plain, '--available-tools='), 'copilot plain argv')
+assert(not has(copilot_tools, '--no-custom-instructions') and has(copilot_tools, '--available-tools=view,glob,grep,rg')
+  and has(copilot_tools, '--allow-tool=read'), 'copilot tools argv')
 local claude_plain, claude_tools = argv_for('claude', false), argv_for('claude', true)
-assert(claude_plain:find('--tools  ', 1, true) and not claude_plain:find('--allowedTools', 1, true))
-assert(claude_tools:find('--tools Read,Grep,Glob', 1, true) and claude_tools:find('--allowedTools Read,Grep,Glob', 1, true))
+assert(has(claude_plain, '') and not has(claude_plain, '--allowedTools'), 'claude plain argv')
+assert(has(claude_tools, 'Read,Grep,Glob') and has(claude_tools, '--allowedTools'), 'claude tools argv')
 vim.g.review_context_provider = nil
 vim.ui.input = original_input
 
