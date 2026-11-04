@@ -141,6 +141,32 @@ Keywords: resize, zoom, fullscreen, maximize, split, window, pane.
 
 ---
 
+## Following Links (files, docs, back and forth)
+
+Keywords: link, gf, go to file, jump back, jumplist, markdown link, open path, return.
+
+| Key / Command | Action |
+| --- | --- |
+| `gf` | Open the file path under the cursor in this window |
+| `<C-w>f` | …in a split |
+| `<C-w>gf` | …in a new tab (keeps your place; `:tabc` or `g<Tab>` to return) |
+| `gF` / `<C-w>gF` | Same, and jump to the line in `path:42` |
+| `{Visual}gf` | Open exactly the selected text as a path |
+| `<C-o>` / `<C-i>` | Back / forward through the jumplist (works across files) |
+| `<C-^>` | Toggle to the previous (alternate) file |
+| `:jumps` | List the jumplist |
+| `<C-]>` / `<C-t>` | Follow a `:help` link (or LSP definition) / go back |
+| `gx` | Open the URL or path under the cursor with the system handler |
+
+Relative paths resolve from the current file's directory first, then cwd
+(`'path'` = `.,,`). In Markdown put the cursor on the `(path)` part, not the
+link text. `#` counts as part of a filename, so `gf` on `setup.md#install`
+fails: Visual-select just `setup.md` and press `gf`. The jumplist is per window
+(copied on split): after `<C-w>gf`, `<C-o>` reopens the old file *inside the new
+tab*. To get back to the original tab, close it or `g<Tab>`.
+
+---
+
 ## AI CLI Bridge (clipboard)
 
 ### Explain without leaving the diff
@@ -160,6 +186,8 @@ Narrow terminals put the support panes below the diff.
 | `<leader>an` | Edit the pinned context pane; `:w` saves |
 | `<leader>ar` / Enter in a support pane | Return to the captured code position |
 | `<leader>ax` / `q` in a support pane | Close support panes and cancel a pending explanation |
+| `<leader>aE` / `<leader>aA` / `<leader>aQ` | Explain / ask / follow up with read-only tools and repo instructions |
+| `:ReviewTools` | Toggle read tools as the default for `ae` / `aa` |
 | `:ReviewContext` | Reopen the last explanation and notes |
 
 The backend defaults to Copilot CLI using its configured model. Authenticate
@@ -169,6 +197,13 @@ with `copilot login` if necessary. To use Claude Code instead, set
 shell aliases. It disables assistant tools; the explanation uses the supplied
 selection, up to 25 surrounding lines on either side, and your pinned notes.
 Requests go to the selected assistant provider only when you ask.
+
+Uppercase keys (`aE`, `aA`, `aQ`) run the same request with read-only file
+tools (Copilot: `view,glob,grep`; Claude: `Read,Grep,Glob`) and load repo
+custom instructions (`AGENTS.md`, `CLAUDE.md`, ...). No shell, edits, or MCP.
+Follow-ups (`aq`) keep the thread's mode. Set `vim.g.review_context_tools = true`
+in `init.lua` (or run `:ReviewTools`) to make lowercase keys use tools too.
+Tool reads see the working tree, not the Diffview revision you selected.
 
 To ask something specific, select code and press `<leader>aa`, then type your
 question and Enter. For example: “What does this expand to if the path contains
