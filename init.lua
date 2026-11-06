@@ -40,6 +40,9 @@ vim.api.nvim_create_autocmd('VimEnter', {
   end,
 })
 
+-- Load local settings if defined on the machine --
+pcall(require, 'local')
+
 -- Basic settings --
 vim.o.number = true            -- Show line numbers
 vim.o.relativenumber = true    -- Use relative line numbers
@@ -74,7 +77,7 @@ vim.keymap.set('n', '<leader>?', '<Cmd>tab drop ' .. config_dir .. '/cheatsheet.
 -- AI clipboard bridge: format the current selection (or whole buffer) with a
 -- `@path:startline-endline` header, line-numbered body, and copy to the system
 -- clipboard. Paste into your AI CLI tab (claude, copilot, ...) with Cmd+V.
-
+vim.g.review_context_provider = vim.g.review_context_provider or 'copilot'
 -- Resolve a buffer to a `@`-mentionable path plus an optional revision label.
 -- Diffview buffers are named `diffview://<gitdir>/<rev>/<path>`, which no
 -- assistant can open, so ask diffview's view model for the real path instead.

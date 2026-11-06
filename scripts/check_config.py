@@ -29,7 +29,12 @@ def main() -> None:
     options = set(
         re.findall(r"(?m)^\s*vim\.(?:o|g|opt)\.([A-Za-z0-9_]+)\s*=\s*(?!=)", source)
     )
-    expected_options = set(spec["options"]) | {"mapleader", "maplocalleader", "listchars"}
+    expected_options = (
+        set(spec["options"])
+        | {"mapleader", "maplocalleader", "listchars"}
+        # vim.g settings with no vim.o value to assert, declared separately.
+        | set(spec["globals"])
+    )
     fail("option", expected_options, options)
 
     mappings = {
