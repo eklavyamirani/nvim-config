@@ -3,8 +3,9 @@
 
 ## LSP Completion (Insert mode)
 
-Python and C# suggestions appear automatically on server-advertised trigger
-characters, such as `.`, when the language server is attached.
+Python, C#, Rust, TypeScript, and JavaScript suggestions appear automatically on
+server-advertised trigger characters, such as `.`, when the language server is
+attached.
 
 | Key | Action |
 | --- | --- |

@@ -26,6 +26,49 @@ M.servers = {
       run({ python, '-m', 'pip', 'install', '--upgrade', '-r', root .. '/lsp/requirements.txt' })
     end,
   },
+  rust_analyzer = {
+    executable = 'rust-analyzer',
+    dirs = { 'rust-lsp' },
+    -- Prebuilt standalone server; no Rust toolchain needed to install it.
+    requires = { 'curl', windows and 'tar' or 'gzip' },
+    install = function(run)
+      local uname = vim.uv.os_uname()
+      local arch = (uname.machine == 'arm64' or uname.machine == 'aarch64') and 'aarch64' or 'x86_64'
+      local target, archive
+      if windows then
+        target, archive = arch .. '-pc-windows-msvc', '.zip'
+      elseif uname.sysname == 'Darwin' then
+        target, archive = arch .. '-apple-darwin', '.gz'
+      else
+        target, archive = arch .. '-unknown-linux-gnu', '.gz'
+      end
+      local dir = vim.fn.stdpath('data') .. '/rust-lsp'
+      local download = dir .. '/rust-analyzer' .. archive
+      vim.fn.mkdir(dir, 'p')
+      run({ 'curl', '-fsSL', '-o', download,
+        ('https://github.com/rust-lang/rust-analyzer/releases/download/%s/rust-analyzer-%s%s')
+          :format('2026-11-02', target, archive) })
+      if windows then
+        -- bsdtar, shipped with Windows, extracts rust-analyzer.exe from the zip.
+        run({ 'tar', '-xf', download, '-C', dir })
+        vim.fn.delete(download)
+      else
+        run({ 'gzip', '-df', download })
+        vim.fn.setfperm(dir .. '/rust-analyzer', 'rwxr-xr-x')
+      end
+    end,
+  },
+  ts_ls = {
+    -- TypeScript 7's compiler binary is also its language server (`tsc --lsp`).
+    executable = 'tsc',
+    dirs = { 'typescript-lsp/node_modules/.bin' },
+    requires = { 'npm' },
+    install = function(run)
+      -- exepath() resolves npm.cmd on Windows, which a bare name would not.
+      run({ vim.fn.exepath('npm'), 'install', '--prefix', vim.fn.stdpath('data') .. '/typescript-lsp',
+        '--no-package-lock', '--no-fund', '--no-audit', 'typescript@7.0.2' })
+    end,
+  },
   csharp_ls = {
     executable = 'csharp-ls',
     dirs = { 'csharp-lsp' },

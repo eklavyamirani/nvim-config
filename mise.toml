@@ -1,0 +1,4 @@
+[tools]
+dotnet = "latest"
+# cargo, for rust-analyzer's project loading (`cargo metadata`).
+rust = "1.99.1"
