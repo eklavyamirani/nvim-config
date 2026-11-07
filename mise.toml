@@ -1,4 +1,5 @@
 [tools]
-dotnet = "latest"
+# The SDK csharp-ls needs; pinned exactly, like the global mise config.
+dotnet = "10.0.403"
 # cargo, for rust-analyzer's project loading (`cargo metadata`).
 rust = "1.99.1"
