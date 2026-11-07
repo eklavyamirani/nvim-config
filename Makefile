@@ -9,6 +9,7 @@ test:
 
 deps:
 	$(NVIM) -l scripts/install_deps.lua
+	$(NVIM) -l scripts/install_deps.lua parsers
 
 check-config:
 	$(RUN_TESTS) check
