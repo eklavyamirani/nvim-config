@@ -15,6 +15,25 @@ attached.
 
 ---
 
+## LSP Navigation (Normal mode)
+
+Neovim's native defaults, available in any buffer with an attached server. The
+`gr*` prefix is mnemonic for "goto/refactor".
+
+| Key | Action |
+| --- | --- |
+| `K` | Hover docs — the fastest way to ask "what type is this?" |
+| `grn` | Rename symbol across every file |
+| `grr` | Find all references |
+| `gra` | Code action (auto-import, fix-all) |
+| `gri` | Go to implementation |
+| `gO` | Document symbol outline |
+
+`K` and `grn` are the two that change how a project feels: `grn` on a type name
+refactors the SYNC-3 wire protocol without grepping.
+
+---
+
 ## Vim External Filters (`!`)
 
 **Usage:** Highlight text in Visual Mode, type `!`, then the command.
