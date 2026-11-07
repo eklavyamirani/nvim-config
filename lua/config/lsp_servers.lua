@@ -30,7 +30,7 @@ M.servers = {
     executable = 'rust-analyzer',
     dirs = { 'rust-lsp' },
     -- Prebuilt standalone server; no Rust toolchain needed to install it.
-    requires = { 'curl', windows and 'tar' or 'gzip' },
+    requires = { 'curl', windows and 'powershell' or 'gzip' },
     install = function(run)
       local uname = vim.uv.os_uname()
       local arch = (uname.machine == 'arm64' or uname.machine == 'aarch64') and 'aarch64' or 'x86_64'
@@ -49,9 +49,12 @@ M.servers = {
         ('https://github.com/rust-lang/rust-analyzer/releases/download/%s/rust-analyzer-%s%s')
           :format('2026-11-02', target, archive) })
       if windows then
-        -- bsdtar, shipped with Windows, extracts rust-analyzer.exe from the zip.
-        run({ 'tar', '-xf', download, '-C', dir })
+        -- Not `tar`: PATH there often finds Git's GNU tar, which reads no zip
+        -- and treats a drive-letter path as a remote host.
+        run({ 'powershell', '-NoProfile', '-NonInteractive', '-Command',
+          ("Expand-Archive -LiteralPath '%s' -DestinationPath '%s' -Force"):format(download, dir) })
         vim.fn.delete(download)
+        vim.fn.delete(dir .. '/rust_analyzer.pdb')  -- 14 MB of debug symbols
       else
         run({ 'gzip', '-df', download })
         vim.fn.setfperm(dir .. '/rust-analyzer', 'rwxr-xr-x')

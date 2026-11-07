@@ -13,7 +13,7 @@ nvim -l scripts/install_deps.lua   # any platform, including Windows
 Pass server names (e.g. `nvim -l scripts/install_deps.lua csharp_ls`) to install
 only some. Prerequisites must already be on PATH: Python 3 for BasedPyright, the
 .NET 10 SDK for csharp-ls, npm for the TypeScript server, and `curl` plus `gzip`
-(`tar` on Windows) to unpack the rust-analyzer download. Each server falls back to
+(`powershell` on Windows) to unpack the rust-analyzer download. Each server falls back to
 its executable on PATH when its installation is absent.
 
 To add a server, create `lsp/<name>.lua`, register it with install steps in
@@ -110,7 +110,8 @@ gzip -d rust-analyzer.gz && chmod +x rust-analyzer
 ```
 
 The target triple comes from `vim.uv.os_uname()`; Windows gets the `.zip` asset,
-extracted with the `tar` that ships with Windows. Bump the pinned date in
+extracted with `Expand-Archive` — not `tar`, which on Windows PATH is often Git's
+GNU tar, unable to read a zip or a drive-letter path. Bump the pinned date in
 `lua/config/lsp_servers.lua` to update. The config falls back to `rust-analyzer`
 on PATH (e.g. a `rustup component add rust-analyzer` install) when this one is
 absent.
