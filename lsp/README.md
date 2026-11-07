@@ -6,15 +6,25 @@ Every enabled server is listed in `lua/config/lsp_servers.lua`, with where it in
 under `stdpath('data')` and how to install it. Install or update all of them with:
 
 ```sh
-make deps                          # macOS/Linux
-nvim -l scripts/install_deps.lua   # any platform, including Windows
+make deps                                  # macOS/Linux
+nvim -l scripts/install_deps.lua           # any platform, including Windows
+nvim -l scripts/install_deps.lua parsers   # ... and the Treesitter parsers
 ```
+
+`make deps` runs both commands. Installing the parsers up front means a session
+never opens a buffer whose parser is still compiling; it needs the `tree-sitter`
+CLI on PATH, and it installs the languages listed in `lua/config/treesitter.lua`.
+A buffer whose parser is still missing simply opens without highlighting, and
+Treesitter starts as soon as the parser lands.
 
 Pass server names (e.g. `nvim -l scripts/install_deps.lua csharp_ls`) to install
 only some. Prerequisites must already be on PATH: Python 3 for BasedPyright, the
 .NET 10 SDK for csharp-ls, npm for the TypeScript server, and `curl` plus `gzip`
-(`powershell` on Windows) to unpack the rust-analyzer download. Each server falls back to
-its executable on PATH when its installation is absent.
+(`powershell` on Windows) to unpack the rust-analyzer download. Each server falls
+back to its executable on PATH when its installation is absent.
+
+To add a parser, add it to `lua/config/treesitter.lua`, with its Neovim filetype
+when the two names differ.
 
 To add a server, create `lsp/<name>.lua`, register it with install steps in
 `lua/config/lsp_servers.lua` (servers are enabled from there), and add its expected

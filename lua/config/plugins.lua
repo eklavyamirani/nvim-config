@@ -120,26 +120,7 @@ vim.keymap.set('n', '<leader>dc', '<cmd>DiffviewClose<cr>',      { desc = 'Diffv
 vim.keymap.set('n', '<leader>df', '<cmd>DiffviewToggleFiles<cr>', { desc = 'Diffview: toggle file panel' })
 
 -- Treesitter highlighting + indentation using the Neovim 0.12-compatible API.
-local ok_ts, ts = pcall(require, 'nvim-treesitter')
-if ok_ts then
-  local languages = { 'lua', 'vim', 'vimdoc', 'markdown', 'markdown_inline', 'bash', 'json', 'yaml',
-    'c_sharp', 'rust', 'typescript', 'tsx', 'javascript' }
-  -- FileType matches Neovim's detected filetype, not the parser name or the
-  -- file extension, so parsers whose names differ need an explicit mapping:
-  -- Extension | Filetype        | Treesitter parser
-  -- .md       | markdown        | markdown
-  -- .cs       | cs              | c_sharp
-  -- .tsx      | typescriptreact | tsx
-  local filetypes = { c_sharp = 'cs', tsx = 'typescriptreact' }
-  ts.install(languages)
-  vim.api.nvim_create_autocmd('FileType', {
-    pattern = vim.tbl_map(function(lang) return filetypes[lang] or lang end, languages),
-    callback = function()
-      vim.treesitter.start()
-      vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-    end,
-  })
-end
+require('config.treesitter').setup()
 
 -- Colorscheme.
 pcall(vim.cmd.colorscheme, 'catppuccin')

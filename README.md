@@ -94,7 +94,8 @@ documentation. Tests use temporary repositories for their review data.
 | `lsp/rust_analyzer.lua` | Native Rust server configuration |
 | `lsp/ts_ls.lua` | Native TypeScript/JavaScript server configuration |
 | `lua/config/lsp_servers.lua` | Enabled language servers, install steps, and executable resolution |
-| `scripts/install_deps.lua` | Cross-platform language-server installer (`make deps`) |
+| `lua/config/treesitter.lua` | Installed parsers, their filetypes, and highlighting start |
+| `scripts/install_deps.lua` | Cross-platform language-server and parser installer (`make deps`) |
 | `scripts/run_tests.lua` | Cross-platform test runner behind the `make` test targets |
 | `nvim-pack-lock.json` | Committed plugin versions |
 | `mise.toml` | Toolchains this config's language servers need (.NET SDK, Cargo) |
@@ -122,8 +123,8 @@ errors, navigation, and notification copying. Keep the inventory in sync when
 adding mappings or autocmd events. A startup error or unexpected stderr is a
 failure.
 
-For Python LSP or Diffview navigation changes, install the language servers
-(see [lsp/README.md](lsp/README.md#installing-servers)), then also run:
+For Python LSP or Diffview navigation changes, install the language servers and
+parsers (see [lsp/README.md](lsp/README.md#installing-servers)), then also run:
 
 ```sh
 make deps NVIM=bin/nvim-config

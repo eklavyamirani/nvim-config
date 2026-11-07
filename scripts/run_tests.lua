@@ -7,6 +7,7 @@ local suites = {
   { 'check', { python, 'scripts/check_config.py' } },
   { 'config', 'init.lua', 'tests/config.lua' },
   { 'config', 'init.lua', 'tests/csharp_lsp.lua' },
+  { 'config', 'init.lua', 'tests/treesitter.lua' },
   { 'config', 'NONE', 'tests/lsp_servers.lua' },
   { 'review', 'NONE', 'tests/review_context.lua' },
   { 'review', 'NONE', 'tests/review_route.lua' },
