@@ -59,25 +59,31 @@ jobs:
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: 10.0.x
+      # Keep going after a failed step, so one broken step reports itself
+      # instead of skipping the setup and suites behind it.
       - name: Install language servers
+        if: ${{ !cancelled() }}
         run: nvim -l scripts/install_deps.lua
       - name: Install parser compiler
+        if: ${{ !cancelled() }}
         run: $([ "$RUNNER_OS" = Linux ] && echo sudo) npm install --global tree-sitter-cli@0.27.0
       - name: Choose config directory
+        if: ${{ !cancelled() }}
         run: echo "XDG_CONFIG_HOME=$RUNNER_TEMP/config" >> "$GITHUB_ENV"
       - name: Expose checkout as the Neovim config (Linux/macOS)
-        if: runner.os != 'Windows'
+        if: ${{ !cancelled() && runner.os != 'Windows' }}
         run: |
           mkdir -p "$XDG_CONFIG_HOME"
           ln -s "$GITHUB_WORKSPACE" "$XDG_CONFIG_HOME/nvim"
       # Junctions need no elevation, unlike symlinks.
       - name: Expose checkout as the Neovim config (Windows)
-        if: runner.os == 'Windows'
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path $env:XDG_CONFIG_HOME | Out-Null
           New-Item -ItemType Junction -Path "$env:XDG_CONFIG_HOME\nvim" -Target $env:GITHUB_WORKSPACE | Out-Null
       - name: Restore plugins and parsers
+        if: ${{ !cancelled() }}
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           # Neovim appends -data to the app name on Windows.
@@ -86,8 +92,8 @@ jobs:
             .ci/data/nvim-data/site
           key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('nvim-pack-lock.json', 'lua/config/plugins.lua') }}
       - name: Install locked plugins
+        if: ${{ !cancelled() }}
         run: nvim --headless --cmd "set runtimepath^=$GITHUB_WORKSPACE" -u init.lua +qa
-      # Run every suite even when an earlier one fails.
       - name: Check configuration specification
         if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua check

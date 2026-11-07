@@ -122,15 +122,18 @@ vim.keymap.set('n', '<leader>df', '<cmd>DiffviewToggleFiles<cr>', { desc = 'Diff
 -- Treesitter highlighting + indentation using the Neovim 0.12-compatible API.
 local ok_ts, ts = pcall(require, 'nvim-treesitter')
 if ok_ts then
-  local languages = { 'lua', 'vim', 'vimdoc', 'markdown', 'markdown_inline', 'bash', 'json', 'yaml', 'c_sharp' }
+  local languages = { 'lua', 'vim', 'vimdoc', 'markdown', 'markdown_inline', 'bash', 'json', 'yaml',
+    'c_sharp', 'rust', 'typescript', 'tsx', 'javascript' }
+  -- FileType matches Neovim's detected filetype, not the parser name or the
+  -- file extension, so parsers whose names differ need an explicit mapping:
+  -- Extension | Filetype        | Treesitter parser
+  -- .md       | markdown        | markdown
+  -- .cs       | cs              | c_sharp
+  -- .tsx      | typescriptreact | tsx
+  local filetypes = { c_sharp = 'cs', tsx = 'typescriptreact' }
   ts.install(languages)
   vim.api.nvim_create_autocmd('FileType', {
-    -- FileType matches Neovim's detected filetype, not the file extension:
-    -- Extension | Filetype | Treesitter parser
-    -- .md       | markdown | markdown
-    -- .cs       | cs       | c_sharp
-    -- Install 'c_sharp', but match 'cs' here to start C# highlighting.
-    pattern = vim.list_extend(vim.tbl_filter(function(lang) return lang ~= 'c_sharp' end, languages), { 'cs' }),
+    pattern = vim.tbl_map(function(lang) return filetypes[lang] or lang end, languages),
     callback = function()
       vim.treesitter.start()
       vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"

@@ -6,6 +6,9 @@ local exe = windows and '.exe' or ''
 local expected = {
   basedpyright = data .. '/python-lsp/' .. (windows and 'Scripts' or 'bin') .. '/basedpyright-langserver' .. exe,
   csharp_ls = data .. '/csharp-lsp/csharp-ls' .. exe,
+  rust_analyzer = data .. '/rust-lsp/rust-analyzer' .. exe,
+  -- npm links package bins into node_modules/.bin on every platform.
+  ts_ls = data .. '/typescript-lsp/node_modules/.bin/tsc' .. (windows and '.cmd' or ''),
 }
 -- Windows paths are case-insensitive, and exepath() takes the extension's case from PATHEXT.
 local function same_path(a, b)

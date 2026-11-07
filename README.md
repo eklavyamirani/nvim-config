@@ -2,7 +2,9 @@
 
 This configuration uses Neovim 0.12+, native `vim.pack`, and a committed plugin
 lockfile. It includes Diffview review tools, persistent code-explanation threads,
-and native Python (BasedPyright) and C# (csharp-ls) LSP. CI targets Neovim 0.12.5 and nightly.
+and native LSP for Python (BasedPyright), C# (csharp-ls), Rust (rust-analyzer),
+and TypeScript/JavaScript (TypeScript 7's built-in server). CI targets Neovim
+0.12.5 and nightly.
 
 ## Start a development session
 
@@ -52,6 +54,13 @@ C# files use native LSP with csharp-ls and Treesitter highlighting. See the
 [C#/.NET setup guide](lsp/README.md#cnet) for SDK/server installation, project
 roots, and commands.
 
+Rust files use native LSP with rust-analyzer, rooted at the Cargo workspace; the
+server is downloaded by `make deps`, and analysis needs the Cargo toolchain that
+`mise.toml` pins for this checkout.
+TypeScript and JavaScript files use TypeScript 7's built-in server (`tsc --lsp`).
+See the [Rust](lsp/README.md#rust) and
+[TypeScript/JavaScript](lsp/README.md#typescriptjavascript) guides.
+
 ## Current limitations
 
 AI grouping uses file metadata and sampled diffs. It has no interaction for
@@ -82,10 +91,13 @@ documentation. Tests use temporary repositories for their review data.
 | `lua/config/diffview_lsp.lua` | Commit-specific Python definition, hover, and references |
 | `lsp/csharp_ls.lua` | Native C# server configuration |
 | `lsp/basedpyright.lua` | Native Python server configuration |
+| `lsp/rust_analyzer.lua` | Native Rust server configuration |
+| `lsp/ts_ls.lua` | Native TypeScript/JavaScript server configuration |
 | `lua/config/lsp_servers.lua` | Enabled language servers, install steps, and executable resolution |
 | `scripts/install_deps.lua` | Cross-platform language-server installer (`make deps`) |
 | `scripts/run_tests.lua` | Cross-platform test runner behind the `make` test targets |
 | `nvim-pack-lock.json` | Committed plugin versions |
+| `mise.toml` | Toolchains this config's language servers need (.NET SDK, Cargo) |
 | `bin/nvim-config` | Launch Neovim with this checkout's configuration |
 | `tests/config_spec.json` | Declared configuration inventory checked by `scripts/check_config.py` |
 | `.github/workflows/ci.yml` | CI environment and validation jobs |

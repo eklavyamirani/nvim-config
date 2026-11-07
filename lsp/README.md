@@ -11,9 +11,10 @@ nvim -l scripts/install_deps.lua   # any platform, including Windows
 ```
 
 Pass server names (e.g. `nvim -l scripts/install_deps.lua csharp_ls`) to install
-only some. Prerequisites must already be on PATH: Python 3 for BasedPyright and the
-.NET 10 SDK for csharp-ls. Each server falls back to its executable on PATH when
-its installation is absent.
+only some. Prerequisites must already be on PATH: Python 3 for BasedPyright, the
+.NET 10 SDK for csharp-ls, npm for the TypeScript server, and `curl` plus `gzip`
+(`powershell` on Windows) to unpack the rust-analyzer download. Each server falls back to
+its executable on PATH when its installation is absent.
 
 To add a server, create `lsp/<name>.lua`, register it with install steps in
 `lua/config/lsp_servers.lua` (servers are enabled from there), and add its expected
@@ -95,6 +96,76 @@ the reviewed commit.
 References: [Neovim LSP](https://neovim.io/doc/user/lsp/),
 [BasedPyright installation](https://docs.basedpyright.com/latest/installation/command-line-and-language-server/),
 [server settings](https://docs.basedpyright.com/latest/configuration/language-server-settings/).
+
+## Rust
+
+Rust uses [rust-analyzer](https://rust-analyzer.github.io/) through native Neovim
+LSP. `make deps` downloads the pinned standalone release build — no Rust toolchain
+is needed to install the server — into `~/.local/share/nvim/rust-lsp`, equivalent to:
+
+```sh
+curl -fsSL -o rust-analyzer.gz \
+  https://github.com/rust-lang/rust-analyzer/releases/download/2026-11-02/rust-analyzer-<target>.gz
+gzip -d rust-analyzer.gz && chmod +x rust-analyzer
+```
+
+The target triple comes from `vim.uv.os_uname()`; Windows gets the `.zip` asset,
+extracted with `Expand-Archive` — not `tar`, which on Windows PATH is often Git's
+GNU tar, unable to read a zip or a drive-letter path. Bump the pinned date in
+`lua/config/lsp_servers.lua` to update. The config falls back to `rust-analyzer`
+on PATH (e.g. a `rustup component add rust-analyzer` install) when this one is
+absent.
+
+Analysis itself still needs **Cargo and a Rust toolchain on PATH**: rust-analyzer
+runs `cargo metadata` to load the project, and without it the server attaches but
+reports no types or diagnostics. This repo's `mise.toml` pins the toolchain
+alongside the .NET SDK, so `mise install` in this checkout provides it; otherwise
+install Rust with [rustup](https://rustup.rs/).
+
+The server starts at the nearest ancestor holding `Cargo.lock` or
+`rust-project.json`, so one server covers a whole Cargo workspace rather than one
+per member; a bare `Cargo.toml` and then `.git` are the fallbacks. Loose `.rs`
+files outside a project get a `.git`-rooted server with no crate graph.
+
+The navigation, diagnostic, and completion keys in the Python table also apply to
+Rust, plus the native `grn` (rename) and `gra` (code actions) defaults.
+`:lua vim.lsp.buf.format()` runs rustfmt on request; there is no format-on-save.
+Diagnostics come from `cargo check` on save (rust-analyzer's default) with no
+sign-column glyphs. Inlay hints stay off, matching the config's minimal rendering;
+`:lua vim.lsp.inlay_hint.enable(true)` turns them on for a session. Build and test
+with `:!cargo build` / `:!cargo test`. Procedural-macro and build-script expansion
+use rust-analyzer's defaults. Commit-specific Diffview LSP navigation remains
+Python-only.
+
+## TypeScript/JavaScript
+
+TypeScript 7 ships its language server inside the compiler binary, so `tsc --lsp
+--stdio` is the whole server — no `typescript-language-server` wrapper and no
+Neovim plugin. (The wrapper is incompatible with TypeScript 7 anyway: the native
+compiler no longer ships `tsserver.js`.) `make deps` needs npm on PATH and
+installs into `~/.local/share/nvim/typescript-lsp`, equivalent to:
+
+```sh
+npm install --prefix ~/.local/share/nvim/typescript-lsp typescript@7.0.2
+```
+
+That installation is separate from each project's own `typescript` dependency, so
+editor behaviour does not change with the project's compiler version — and a
+project pinned to TypeScript 5 is still analysed by the 7.x server. The config
+falls back to `tsc` on PATH when the installation is absent; bump the pinned
+version in `lua/config/lsp_servers.lua` to update.
+
+Attaches to `typescript`, `typescriptreact`, `javascript`, and `javascriptreact`
+buffers. The server starts at the nearest ancestor holding `tsconfig.json` or
+`jsconfig.json`, falling back to `package.json` and then `.git`. Without a
+`tsconfig.json`, files are analysed with default compiler options.
+
+The navigation, diagnostic, and completion keys in the Python table also apply
+here, as do the native `grn` and `gra` defaults. Treesitter uses the `typescript`,
+`tsx`, and `javascript` parsers; `.tsx` files are filetype `typescriptreact` and
+use the `tsx` parser. No format-on-save, no ESLint integration (nvim-lint handles
+linters, and no JavaScript linter is configured), and no automatic import
+organising. Commit-specific Diffview LSP navigation remains Python-only.
 
 ## C#/.NET
 

@@ -20,6 +20,7 @@
     "completeopt": "menu,menuone,noselect,popup"
   },
   "listchars": { "tab": "» ", "trail": "·", "nbsp": "␣" },
+  "globals": ["review_context_provider"],
   "plugins": {
     "nvim-lualine/lualine.nvim": "lualine",
     "nvim-tree/nvim-web-devicons": "nvim-web-devicons",

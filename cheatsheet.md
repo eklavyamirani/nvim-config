@@ -3,8 +3,9 @@
 
 ## LSP Completion (Insert mode)
 
-Python and C# suggestions appear automatically on server-advertised trigger
-characters, such as `.`, when the language server is attached.
+Python, C#, Rust, TypeScript, and JavaScript suggestions appear automatically on
+server-advertised trigger characters, such as `.`, when the language server is
+attached.
 
 | Key | Action |
 | --- | --- |
@@ -192,10 +193,12 @@ Narrow terminals put the support panes below the diff.
 
 The backend defaults to Copilot CLI using its configured model. Authenticate
 with `copilot login` if necessary. To use Claude Code instead, set
-`vim.g.review_context_provider = 'claude'` in `init.lua` (authenticate with
-`claude auth login`). The bridge invokes the executable directly, not your
-shell aliases. It disables assistant tools; the explanation uses the supplied
-selection, up to 25 surrounding lines on either side, and your pinned notes.
+`vim.g.review_context_provider = 'claude'` in `lua/local.lua`, an optional
+per-machine file that `init.lua` loads before anything reads the setting and
+that Git ignores (authenticate with `claude auth login`). The bridge invokes
+the executable directly, not your shell aliases. It disables assistant tools;
+the explanation uses the supplied selection, up to 25 surrounding lines on
+either side, and your pinned notes.
 Requests go to the selected assistant provider only when you ask.
 
 Uppercase keys (`aE`, `aA`, `aQ`) run the same request with read-only file
