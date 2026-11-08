@@ -3,8 +3,8 @@
 This configuration uses Neovim 0.12+, native `vim.pack`, and a committed plugin
 lockfile. It includes Diffview review tools, persistent code-explanation threads,
 and native LSP for Python (BasedPyright), C# (csharp-ls), Rust (rust-analyzer),
-and TypeScript/JavaScript (TypeScript 7's built-in server). CI targets Neovim
-0.12.5 and nightly.
+TypeScript/JavaScript (TypeScript 7's built-in server), and JSON
+(`vscode-json-language-server`). CI targets Neovim 0.12.5 and nightly.
 
 ## Start a development session
 
@@ -58,8 +58,11 @@ Rust files use native LSP with rust-analyzer, rooted at the Cargo workspace; the
 server is downloaded by `make deps`, and analysis needs the Cargo toolchain that
 `mise.toml` pins for this checkout.
 TypeScript and JavaScript files use TypeScript 7's built-in server (`tsc --lsp`).
-See the [Rust](lsp/README.md#rust) and
-[TypeScript/JavaScript](lsp/README.md#typescriptjavascript) guides.
+JSON and JSONC files get syntax errors always, plus schema-driven type errors
+where a `$schema` key or a mapped filename supplies a schema.
+See the [Rust](lsp/README.md#rust),
+[TypeScript/JavaScript](lsp/README.md#typescriptjavascript), and
+[JSON](lsp/README.md#json) guides.
 
 ## Current limitations
 
@@ -93,6 +96,7 @@ documentation. Tests use temporary repositories for their review data.
 | `lsp/basedpyright.lua` | Native Python server configuration |
 | `lsp/rust_analyzer.lua` | Native Rust server configuration |
 | `lsp/ts_ls.lua` | Native TypeScript/JavaScript server configuration |
+| `lsp/jsonls.lua` | Native JSON server configuration and schema mappings |
 | `lua/config/lsp_servers.lua` | Enabled language servers, install steps, and executable resolution |
 | `lua/config/treesitter.lua` | Installed parsers, their filetypes, and highlighting start |
 | `scripts/install_deps.lua` | Cross-platform language-server and parser installer (`make deps`) |

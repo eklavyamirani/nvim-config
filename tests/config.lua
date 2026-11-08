@@ -22,6 +22,15 @@ for _, module in pairs(manifest.plugins) do
 end
 assert(vim.fn.exists(':ReviewContext') == 2 and vim.fn.exists(':ReviewRoute') == 2)
 
+-- Inline diagnostics start on the cursor's line, and :DiagnosticLines cycles
+-- through whole-buffer and off before returning there.
+assert(vim.deep_equal(vim.diagnostic.config().virtual_lines, { current_line = true }),
+  'inline diagnostics do not start on the cursor line')
+local function cycle() vim.cmd('DiagnosticLines') return vim.diagnostic.config().virtual_lines end
+assert(cycle() == true, ':DiagnosticLines did not reach whole-buffer lines')
+assert(cycle() == false, ':DiagnosticLines did not reach off')
+assert(vim.deep_equal(cycle(), { current_line = true }), ':DiagnosticLines did not cycle back')
+
 local autocmds = vim.api.nvim_get_autocmds({})
 local events = {}
 for _, autocmd in ipairs(autocmds) do events[autocmd.event] = true end
