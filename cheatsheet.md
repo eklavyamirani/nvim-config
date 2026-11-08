@@ -3,7 +3,7 @@
 
 ## LSP Completion (Insert mode)
 
-Python, C#, Rust, TypeScript, and JavaScript suggestions appear automatically on
+Python, C#, Rust, TypeScript, JavaScript, and JSON suggestions appear automatically on
 server-advertised trigger characters, such as `.`, when the language server is
 attached.
 
@@ -31,6 +31,29 @@ Neovim's native defaults, available in any buffer with an attached server. The
 
 `K` and `grn` are the two that change how a project feels: `grn` on a type name
 refactors the SYNC-3 wire protocol without grepping.
+
+---
+
+## LSP Diagnostics
+
+The message for the diagnostic under the cursor appears inline, on its own line
+below, in every buffer with an attached server. Nothing is rendered on the other
+lines, and there are no sign-column glyphs.
+
+| Key | Action |
+| --- | --- |
+| `<leader>ld` | Diagnostic details in a float |
+| `]d` / `[d` | Next / previous diagnostic |
+| `]D` / `[D` | Last / first diagnostic in the buffer |
+
+| Command | Action |
+| --- | --- |
+| `:DiagnosticLines` | Cycle inline text: cursor line → whole buffer → off |
+
+Cycle to **whole buffer** to see every message at once when triaging a broken
+file — it reflows the buffer as you type, which is why it is not the default.
+Cycle to **off** for a clean read; the underline, `<leader>ld`, and `]d` still
+work. The setting is session-wide, not per-buffer.
 
 ---
 

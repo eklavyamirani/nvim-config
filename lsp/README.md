@@ -19,7 +19,7 @@ Treesitter starts as soon as the parser lands.
 
 Pass server names (e.g. `nvim -l scripts/install_deps.lua csharp_ls`) to install
 only some. Prerequisites must already be on PATH: Python 3 for BasedPyright, the
-.NET 10 SDK for csharp-ls, npm for the TypeScript server, and `curl` plus `gzip`
+.NET 10 SDK for csharp-ls, npm for the TypeScript and JSON servers, and `curl` plus `gzip`
 (`powershell` on Windows) to unpack the rust-analyzer download. Each server falls
 back to its executable on PATH when its installation is absent.
 
@@ -64,6 +64,7 @@ needs one. Missing third-party packages can still produce import diagnostics.
 | `<C-n>` / `<C-p>` with completion menu open | Next/previous suggestion |
 | `<C-y>` / `<C-e>` with completion menu open | Accept/dismiss suggestion |
 | `<leader>ld` | Diagnostic details |
+| `:DiagnosticLines` | Cycle inline diagnostic text: cursor line, whole buffer, off |
 | `[d` / `]d` | Previous/next diagnostic (native defaults) |
 | `<C-t>` | Return after a definition jump |
 
@@ -73,7 +74,10 @@ Use `<C-x><C-o>` in Insert mode to request suggestions at other times.
 Nothing is selected automatically; choose a suggestion and accept with `<C-y>`.
 The selected suggestion's documentation appears in a popup when available.
 
-Diagnostics use basic type checking and no sign-column glyphs. Tagged hint
+Diagnostics use basic type checking and no sign-column glyphs. The message under
+the cursor is rendered inline below its line (`virtual_lines` with
+`current_line`), which applies to every server; `:DiagnosticLines` cycles that to
+the whole buffer or off for the session. Tagged hint
 dimming, automatic f-string changes, and automatic baseline-file updates are
 disabled. There is no format-on-save or automatic code-action hook.
 
@@ -176,6 +180,51 @@ here, as do the native `grn` and `gra` defaults. Treesitter uses the `typescript
 use the `tsx` parser. No format-on-save, no ESLint integration (nvim-lint handles
 linters, and no JavaScript linter is configured), and no automatic import
 organising. Commit-specific Diffview LSP navigation remains Python-only.
+
+## JSON
+
+JSON uses [`vscode-json-language-server`](https://github.com/hrsh7th/vscode-langservers-extracted),
+the server VS Code's own JSON support is built on, through native Neovim LSP. No
+Neovim plugin is involved. `make deps` needs npm on PATH and installs into
+`~/.local/share/nvim/json-lsp`, equivalent to:
+
+```sh
+npm install --prefix ~/.local/share/nvim/json-lsp vscode-langservers-extracted@4.8.0
+```
+
+The config falls back to `vscode-json-language-server` on PATH when that
+installation is absent; bump the pinned version in `lua/config/lsp_servers.lua`
+to update.
+
+Attaches to `json` and `jsonc` buffers, starting at the nearest ancestor holding
+`package.json`, then `.git`. Diagnostics come in two kinds:
+
+- **Syntax errors** — trailing commas, missing commas, unclosed braces,
+  duplicate keys — always, for every JSON file.
+- **Type/shape errors** — wrong value type, unknown property, missing required
+  property — only where the document has a schema. A file's own `$schema` key is
+  honoured, and `lsp/jsonls.lua` maps the common unschemaed filenames
+  (`package.json`, `tsconfig*.json`, `jsconfig*.json`, `.eslintrc.json`,
+  `.prettierrc`, `.markdownlint.json`, `.luarc.json`) to
+  [SchemaStore](https://www.schemastore.org/) URLs. The server bundles no
+  schemas of its own — VS Code supplies them there — so a filename matched by
+  neither gets syntax checking only. Add entries to the `schemas` list to cover
+  more.
+
+Schemas are fetched over HTTP by the server, lazily, the first time a matching
+file opens — nothing is downloaded at startup, and an offline session simply
+falls back to syntax-only diagnostics for those files.
+
+The navigation, diagnostic, and completion keys in the Python table apply here
+too: completion suggests schema-known keys and enum values, and `K` shows a
+property's schema description. `:lua vim.lsp.buf.format()` reformats on request;
+there is no format-on-save. Diagnostics have no sign-column glyphs, matching the
+other servers.
+
+Treesitter highlights `json` buffers with the `json` parser. Files Neovim detects
+as `jsonc` (notably `tsconfig.json`) have no parser available — nvim-treesitter's
+main branch ships none — so they open unhighlighted; the language server still
+attaches and checks them.
 
 ## C#/.NET
 

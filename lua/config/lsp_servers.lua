@@ -72,6 +72,16 @@ M.servers = {
         '--no-package-lock', '--no-fund', '--no-audit', 'typescript@7.0.2' })
     end,
   },
+  jsonls = {
+    executable = 'vscode-json-language-server',
+    dirs = { 'json-lsp/node_modules/.bin' },
+    requires = { 'npm' },
+    install = function(run)
+      -- exepath() resolves npm.cmd on Windows, which a bare name would not.
+      run({ vim.fn.exepath('npm'), 'install', '--prefix', vim.fn.stdpath('data') .. '/json-lsp',
+        '--no-package-lock', '--no-fund', '--no-audit', 'vscode-langservers-extracted@4.8.0' })
+    end,
+  },
   csharp_ls = {
     executable = 'csharp-ls',
     dirs = { 'csharp-lsp' },

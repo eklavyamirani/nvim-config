@@ -8,6 +8,7 @@ local expected = {
   csharp_ls = data .. '/csharp-lsp/csharp-ls' .. exe,
   rust_analyzer = data .. '/rust-lsp/rust-analyzer' .. exe,
   -- npm links package bins into node_modules/.bin on every platform.
+  jsonls = data .. '/json-lsp/node_modules/.bin/vscode-json-language-server' .. (windows and '.cmd' or ''),
   ts_ls = data .. '/typescript-lsp/node_modules/.bin/tsc' .. (windows and '.cmd' or ''),
 }
 -- Windows paths are case-insensitive, and exepath() takes the extension's case from PATHEXT.

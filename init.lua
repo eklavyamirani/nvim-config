@@ -18,6 +18,23 @@ vim.api.nvim_create_autocmd('LspAttach', {
   end,
 })
 vim.lsp.enable(vim.tbl_keys(require('config.lsp_servers').servers))
+
+-- Diagnostic messages in full under the cursor's line only: server messages are
+-- routinely too long for end-of-line virtual text, and rendering every line's
+-- message reflows the buffer while typing.
+vim.diagnostic.config({ virtual_lines = { current_line = true } })
+local diagnostic_lines = {
+  { label = 'cursor line', value = { current_line = true } },
+  { label = 'whole buffer', value = true },
+  { label = 'off', value = false },
+}
+local diagnostic_lines_mode = 1
+vim.api.nvim_create_user_command('DiagnosticLines', function()
+  diagnostic_lines_mode = diagnostic_lines_mode % #diagnostic_lines + 1
+  local mode = diagnostic_lines[diagnostic_lines_mode]
+  vim.diagnostic.config({ virtual_lines = mode.value })
+  vim.notify('Diagnostic lines: ' .. mode.label)
+end, { desc = 'Cycle inline diagnostic text: cursor line, whole buffer, off' })
 require('config.diffview_lsp').setup()
 
 local notify = require('mini.notify')
