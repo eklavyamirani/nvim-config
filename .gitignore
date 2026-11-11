@@ -1,3 +1,5 @@
 .nvim-profile/
 .ci/
 __pycache__/
+/copilot-homes/*
+!/copilot-homes/.gitkeep

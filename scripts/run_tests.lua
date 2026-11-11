@@ -19,6 +19,8 @@ local suites = {
   -- Needs the servers from scripts/install_deps.lua.
   { 'lsp', 'init.lua', 'tests/python_lsp.lua' },
   { 'lsp', 'init.lua', 'tests/diffview_lsp.lua' },
+  -- Uses the real, authenticated Copilot CLI and AI credits.
+  { 'copilot', 'NONE', 'tests/copilot_live.lua' },
 }
 
 local selected = {}

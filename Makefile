@@ -1,4 +1,4 @@
-.PHONY: deps test check-config test-config test-review test-lsp
+.PHONY: deps test check-config test-config test-review test-lsp test-copilot
 
 # Thin wrappers over the cross-platform scripts; on Windows run them with `nvim -l` directly.
 NVIM ?= nvim
@@ -23,3 +23,7 @@ test-review:
 # Needs the servers from `make deps`.
 test-lsp:
 	$(RUN_TESTS) lsp
+
+# Uses the real, authenticated Copilot CLI and AI credits; run on demand, not in CI.
+test-copilot:
+	$(RUN_TESTS) copilot

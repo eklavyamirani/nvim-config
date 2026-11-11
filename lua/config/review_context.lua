@@ -82,6 +82,27 @@ local function files_for(root)
   return dir .. '/notes.md', dir .. '/last.json'
 end
 
+-- Copilot CLI always saves a session, so the bridge gives it a per-workspace COPILOT_HOME instead of
+-- the user's. Only allowlisted files are carried in; the user's sessions and history stay behind.
+local copilot_homes = vim.fn.stdpath('config') .. '/copilot-homes'
+
+local function copilot_home_path(root)
+  return ('%s/%s-%s'):format(copilot_homes, vim.fs.basename(root), vim.fn.sha256(root):sub(1, 12))
+end
+
+local function copilot_home(root, recreate)
+  local home = copilot_home_path(root)
+  if recreate then vim.fs.rm(home, { recursive = true, force = true }) end
+  if not vim.uv.fs_stat(home) then
+    local user_home = vim.env.COPILOT_HOME or vim.fs.joinpath(vim.env.HOME, '.copilot')
+    vim.fn.mkdir(home, 'p', 448)
+    for _, name in ipairs(vim.g.review_context_copilot_seed or { 'settings.json', 'copilot-instructions.md' }) do
+      vim.uv.fs_copyfile(vim.fs.joinpath(user_home, name), vim.fs.joinpath(home, name))
+    end
+  end
+  return home
+end
+
 local function save_answer()
   if not state.source or not state.answer then return end
   local _, path = files_for(state.source.root)
@@ -224,7 +245,7 @@ local function prompt(source, question, turns, tools)
 end
 
 -- tools: read-only file tools plus repo instructions (AGENTS.md, CLAUDE.md, ...).
-local function command(text, tools)
+local function command(text, tools, root)
   if options.command then return options.command(text, tools) end
   local provider = vim.g.review_context_provider or 'copilot'
   if provider == 'claude' then
@@ -239,7 +260,7 @@ local function command(text, tools)
     '--no-color', '--stream', 'off', '--prompt', text }
   vim.list_extend(argv, tools and { '--available-tools=view,glob,grep,rg', '--allow-tool=read' }
     or { '--no-custom-instructions', '--available-tools=' })
-  return argv
+  return argv, { COPILOT_HOME = copilot_home(root) }
 end
 
 local function use_tools(force) return force or vim.g.review_context_tools == true end
@@ -263,9 +284,9 @@ local function request(source, question, followup, tools)
     render_thread()
     save_answer()
   end
-  local ok, argv = pcall(command, text, tools)
+  local ok, argv, env = pcall(command, text, tools, source.root)
   if not ok then fail('Explanation unavailable\n\n' .. argv); return end
-  local launched, job = pcall(vim.system, argv, { text = true, cwd = source.root, timeout = tools and 300000 or 120000 }, function(result)
+  local launched, job = pcall(vim.system, argv, { text = true, cwd = source.root, env = env, timeout = tools and 300000 or 120000 }, function(result)
     vim.schedule(function()
       if token ~= state.sequence then return end
       state.job = nil
@@ -348,12 +369,28 @@ function M.pin(mode)
   save_notes()
 end
 
+local function current_root()
+  local path = api.nvim_buf_get_name(0)
+  local root = vim.fs.root(path ~= '' and path or vim.uv.cwd(), '.git') or vim.uv.cwd()
+  return vim.uv.fs_realpath(root) or root
+end
+
+function M.copilot_home(action, all)
+  if action == 'recreate' then
+    vim.notify('Copilot bridge home recreated: ' .. copilot_home(current_root(), true))
+  elseif action == 'remove' then
+    local homes = all and vim.fn.glob(copilot_homes .. '/*', true, true) or { copilot_home_path(current_root()) }
+    for _, home in ipairs(homes) do vim.fs.rm(home, { recursive = true, force = true }) end
+    vim.notify(all and ('Removed %d Copilot bridge home(s)'):format(#homes) or ('Copilot bridge home removed: ' .. homes[1]))
+  else
+    vim.notify('Copilot bridge home: ' .. copilot_home_path(current_root()))
+  end
+end
+
 function M.open()
   local root = state.source and state.source.root
   if not root then
-    local path = api.nvim_buf_get_name(0)
-    root = vim.fs.root(path ~= '' and path or vim.uv.cwd(), '.git') or vim.uv.cwd()
-    root = vim.uv.fs_realpath(root) or root
+    root = current_root()
     local _, last = files_for(root)
     if vim.uv.fs_stat(last) then
       local ok, saved = pcall(function() return vim.json.decode(table.concat(vim.fn.readfile(last), '\n')) end)
@@ -421,6 +458,10 @@ function M.setup(opts)
     api.nvim_set_var('review_context_tools', not vim.g.review_context_tools)
     vim.notify('Review: read tools ' .. (vim.g.review_context_tools and 'on' or 'off') .. ' by default')
   end, { desc = 'Toggle read tools for ae/aa', force = true })
+  api.nvim_create_user_command('ReviewCopilotHome', function(cmd) M.copilot_home(cmd.args, cmd.bang) end, {
+    desc = 'Show, recreate or remove the Copilot bridge home for this workspace (remove! = all workspaces)',
+    nargs = '?', bang = true, force = true, complete = function() return { 'recreate', 'remove' } end,
+  })
   local group = api.nvim_create_augroup('ReviewContext', { clear = true })
   api.nvim_create_autocmd({ 'BufLeave', 'VimLeavePre' }, { group = group, callback = save_notes })
   api.nvim_create_autocmd('VimLeavePre', { group = group, callback = stop })

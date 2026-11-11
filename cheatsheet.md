@@ -250,6 +250,25 @@ Follow-ups (`aq`) keep the thread's mode. Set `vim.g.review_context_tools = true
 in `init.lua` (or run `:ReviewTools`) to make lowercase keys use tools too.
 Tool reads see the working tree, not the Diffview revision you selected.
 
+Bridge prompts stay out of your assistant session lists: Claude Code runs with
+`--no-session-persistence`, and Copilot CLI (which always saves a session) runs
+with its own `COPILOT_HOME` per workspace (repository root), kept in
+`copilot-homes/<name>-<hash>/` inside this Neovim config directory. Git ignores
+everything in that folder except its `.gitkeep`.
+It is created on the first request by copying your Copilot `settings.json`
+(model and other user settings) and `copilot-instructions.md` (used only by
+the read-tool keys), and nothing else: no sessions, history, MCP servers or
+managed state. Bridge sessions then accumulate there, not in your
+own list. To change what is copied, list file names relative to `~/.copilot`
+in `vim.g.review_context_copilot_seed` (`{}` copies nothing).
+
+| Command | Action |
+| --- | --- |
+| `:ReviewCopilotHome` | Show this workspace's Copilot bridge home |
+| `:ReviewCopilotHome recreate` | Delete it and copy your current settings again |
+| `:ReviewCopilotHome remove` | Delete it; the next request creates a fresh one |
+| `:ReviewCopilotHome! remove` | Delete the bridge homes of every workspace |
+
 To ask something specific, select code and press `<leader>aa`, then type your
 question and Enter. For example: “What does this expand to if the path contains
 spaces?” No prior explanation is needed. The code is captured before the input
