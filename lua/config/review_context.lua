@@ -94,7 +94,7 @@ local function copilot_home(root, recreate)
   local home = copilot_home_path(root)
   if recreate then vim.fs.rm(home, { recursive = true, force = true }) end
   if not vim.uv.fs_stat(home) then
-    local user_home = vim.env.COPILOT_HOME or vim.fs.joinpath(vim.env.HOME, '.copilot')
+    local user_home = vim.env.COPILOT_HOME or vim.fs.joinpath(vim.uv.os_homedir(), '.copilot')
     vim.fn.mkdir(home, 'p', 448)
     for _, name in ipairs(vim.g.review_context_copilot_seed or { 'settings.json', 'copilot-instructions.md' }) do
       vim.uv.fs_copyfile(vim.fs.joinpath(user_home, name), vim.fs.joinpath(home, name))

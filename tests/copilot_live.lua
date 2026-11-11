@@ -6,7 +6,7 @@ if vim.fn.executable('copilot') == 0 then
   vim.cmd('qa!')
 end
 local temp = vim.fn.tempname()
-local user_home = vim.env.COPILOT_HOME or vim.fs.joinpath(vim.env.HOME, '.copilot')
+local user_home = vim.env.COPILOT_HOME or vim.fs.joinpath(vim.uv.os_homedir(), '.copilot')
 local function user_sessions() return #vim.fn.glob(user_home .. '/session-state/*', true, true) end
 local sessions_before = user_sessions()
 local had_settings = vim.uv.fs_stat(user_home .. '/settings.json') ~= nil
