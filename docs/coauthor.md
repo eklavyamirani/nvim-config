@@ -12,6 +12,18 @@ comment is a conversation thread that can go back and forth.
 Builds on the AI clipboard bridge (`<leader>ay`), which already produces the
 anchor (`@path:start-end` + text).
 
+![Mockup of the finalized design](coauthor-demo.gif)
+
+The recording above is a scripted mockup: real Neovim, with a Lua stand-in for
+the Rust CLI and a script standing in for the agent's file edits.
+
+Terms:
+
+- **Anchor text:** the commented lines stored with a thread (the `>` lines),
+  used to re-find the thread after the document changes.
+- **Review baseline:** a copy of the whole document taken at submit, used only
+  as the base of the review diff.
+
 ## Decided
 
 ### Architecture: the `coauthor` CLI owns the threads
@@ -24,7 +36,7 @@ anchor (`@path:start-end` + text).
     output. Neovim has no threads-file parser of its own.
   - The agent calls it from its shell tool.
 - The agent edits the **document** with its normal file tools. The CLI never
-  touches the document; it only reads it to take anchor snapshots.
+  touches the document; it only reads it to re-find anchors.
 - Crate lives in this repo (`coauthor/`), built and installed by `make deps`
   (`cargo install --path coauthor --locked`, toolchain pinned by `mise.toml`),
   and tested in CI on all three platforms. A candidate to move to its own repo
@@ -97,17 +109,17 @@ Agent-facing:
 
 | Command | Effect |
 |---|---|
-| `coauthor list DOC [--awaiting ai\|me]` | Agent rules, then the threads. The agent's entry point |
+| `coauthor list DOC [--awaiting ai\|me]` | Agent rules, then the threads. The agent's entry point. Read-only: it reports re-found anchors but never saves them, because mid-round the document may be half-edited |
 | `coauthor reply DOC ID --edited 6,10-12 TEXT` | AI reply that changed the doc |
 | `coauthor reply DOC ID --no-edit TEXT` | AI reply without a doc change |
-| `coauthor move DOC ID A-B` | Re-anchor. Fails if the range doesn't exist; takes the snapshot from the doc itself |
-| `coauthor done DOC` | Ends the round |
+| `coauthor move DOC ID A-B` | Re-anchor; saved immediately. Fails if the range doesn't exist; takes the anchor text from the doc itself |
+| `coauthor done DOC` | Ends the round: re-finds every anchor in the now-final document and saves the results |
 
 Neovim-facing (also usable by hand):
 
 | Command | Effect |
 |---|---|
-| `coauthor comment DOC --lines A-B TEXT` | New thread; snapshot taken from the doc |
+| `coauthor comment DOC --lines A-B --anchor-text TEXT MESSAGE` | New thread. Neovim passes the anchor text from the buffer: mid-round, or with unsaved edits, the file on disk is not what the user selected |
 | `coauthor comment DOC --thread ID TEXT` | User reply |
 | `coauthor resolve DOC ID` | Mark resolved |
 | `coauthor sync DOC --anchors JSON` | Write current extmark positions |
@@ -157,7 +169,7 @@ Copilot CLI's sandboxing behaviour is unverified.
    reload hits W12).
 2. `coauthor sync` the current anchor positions.
 3. `coauthor round DOC open`.
-4. Snapshot the document to `stdpath('state')` as the review baseline.
+4. Save a copy of the document to `stdpath('state')` as the review baseline.
 5. Yank a short prompt:
    ```
    Address the open comment threads on @docs/rollout.md: run
@@ -191,10 +203,13 @@ buffer would still overwrite the agent's edits.
 - the headless agent process exits,
 - `:CoauthorDone`, the manual fallback when the agent forgets.
 
+A headless exit and `:CoauthorDone` both run `coauthor done` themselves, so
+anchors are always re-found and saved at round end.
+
 `:CoauthorCancel` ends the round without waiting (and kills a headless agent).
 
-**On end:** unlock the buffer, reload the document, resolve anchors once, notify
-once.
+**On end:** unlock the buffer, reload the document, load the anchors `coauthor
+done` saved, notify once.
 
 Known gap: an agent document write arriving after the round ended is handled as
 an unsolicited update (reload and notify). If the buffer has unsaved edits at
@@ -202,21 +217,21 @@ that point, Neovim's built-in W12 prompt is the only guard.
 
 ### Review
 
-`<leader>td` opens a native `diffthis` against the submit snapshot. Gitsigns
+`<leader>td` opens a native `diffthis` against the review baseline. Gitsigns
 diffs against the index, which is the wrong baseline for uncommitted documents.
 The reload is undoable as one step (`'undoreload'`).
 
 ### Anchoring and re-anchoring
 
-Each thread stores `lines` plus a text snapshot (`>`). After every document
+Each thread stores `lines` plus its anchor text (`>`). After every document
 reload, each thread walks a resolution ladder:
 
 | # | Check | Result |
 |---|---|---|
-| 1 | text at stored `lines` matches snapshot | `anchored` |
-| 2 | exact snapshot found elsewhere | `anchored`, `lines` updated. Multiple matches: nearest, marked `drifted` |
+| 1 | text at stored `lines` matches the anchor text | `anchored` |
+| 2 | exact anchor text found elsewhere | `anchored`, `lines` updated. Multiple matches: nearest, marked `drifted` |
 | 3 | fuzzy match within ±N lines | `drifted` above threshold — **experimental, off by default** |
-| 4 | nothing | `orphaned`, keeping last-known line and snapshot |
+| 4 | nothing | `orphaned`, keeping last-known line and anchor text |
 
 - The ladder runs in the CLI (`coauthor list --json` reports each thread's
   resolved state), so Neovim and the agent see the same anchors.
@@ -230,7 +245,7 @@ reload, each thread walks a resolution ladder:
   - From the document: visual select → `<leader>tr` → fzf-lua picker (orphaned,
     then drifted, then the rest).
   - From the side split: `r` on a thread → jump to document → select → `<CR>`.
-- Re-anchoring replaces the snapshot; the old one is kept as a `was:` line until
+- Re-anchoring replaces the anchor text; the old one is kept as a `was:` line until
   the thread is resolved.
 - When re-anchoring an orphan whose last AI reply carries `{edited L-L}`, the
   picker pre-selects that range as the suggestion. The agent often says where
@@ -238,6 +253,15 @@ reload, each thread walks a resolution ladder:
   the user confirms.
 - An orphan is always shown as `was line N`, never as sitting at line N: after
   edits, line N may belong to another thread.
+
+When moved anchors are saved:
+
+| Who moved the text | Source of the new position | Saved |
+|---|---|---|
+| The user, in Neovim | extmarks (exact) | on `:w` and before submit (`coauthor sync`) |
+| The user confirming a re-anchor | the selected lines | immediately (`coauthor move`) |
+| The agent, with `coauthor move` | the range it names | immediately |
+| The agent's edit, found by the ladder | text search | at round end (`coauthor done`) |
 
 ### Orphan discoverability
 
@@ -247,9 +271,9 @@ the comment. Triage is re-anchor, resolve, or ignore.
 | Surface | Behaviour | Default |
 |---|---|---|
 | `mini.notify` | every round: "3 replies · 1 edit · 1 orphaned" | on |
-| Side split | pinned **Needs anchor** section at the top with `was:` snapshots | on |
+| Side split | pinned **Needs anchor** section at the top with `was:` anchor text | on |
 | Lualine | `awaiting me 2 · awaiting ai 1 · orphan 1`, foreground only, coauthor buffers only | on |
-| Quickfix | `[orphan] t3 · was line 17: <snapshot>` at last-known line | on |
+| Quickfix | `[orphan] t3 · was line 17: <anchor text>` at last-known line | on |
 | In-buffer eol | dim `· orphan t3` at last-known line | **off** |
 
 ### Thread views
@@ -287,9 +311,9 @@ coauthor uses the free `<leader>t` (threads) prefix.
 | `<leader>tf` | open thread under cursor (float) *(experimental)* |
 | `]t` / `[t` | next / previous thread |
 | `<leader>tl` | threads → quickfix |
-| `<leader>ts` | `:w`, snapshot, open round, yank submit prompt |
+| `<leader>ts` | `:w`, review baseline, open round, yank submit prompt |
 | `<leader>tS` | headless submit *(experimental)* |
-| `<leader>td` | diff against submit snapshot |
+| `<leader>td` | diff against the review baseline |
 | `<leader>tr` | re-anchor (visual) |
 | `<leader>tx` | resolve thread |
 
@@ -311,7 +335,21 @@ fuzzy drift matching.
   CLI call returned.
 - `FocusGained` → `:checktime` as a fallback for a missed event.
 
-## Findings from the mockup
+## Findings from the mockups
+
+### Second mockup (final design, recording above)
+
+1. **Anchor text for a new comment must come from the buffer.** Mid-round, the
+   agent had already rewritten the file on disk, so line 21 on disk was not the
+   text the user selected. *Decided:* Neovim passes the anchor text
+   (`--anchor-text`).
+2. **Anchors re-found after the agent's edit were never saved.** `list` computed
+   t2 → 17 and t4 → 22 but only reported them. *Decided:* `list` stays
+   read-only; `coauthor done` saves them (see When moved anchors are saved).
+3. **The thread colour is lost on the cursor line**, because the cursor-line
+   number highlight wins. Accepted: the side split shows that thread anyway.
+
+### First mockup
 
 A scripted mockup (real Neovim 0.12 with catppuccin, mini.notify, lualine and
 render-markdown configured like this repo) surfaced these; each is now decided.
