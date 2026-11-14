@@ -486,6 +486,23 @@ Small details decided during implementation, within the design above.
   `round done · N replies · N edits · N orphaned`, counting AI messages added
   since submit. `:Coauthor` will not turn a buffer off mid-round.
 
+### Re-anchoring (#27)
+
+- **Picker:** fzf-lua's `fzf_exec` when the module and the `fzf` binary are
+  available, `vim.ui.select` otherwise. Entries read
+  `tN · orphaned · was line N: <text>`, `tN · drifted · lines A-B: <text>` and
+  `tN · <status> · lines A-B: <text>`, in that group order.
+- **Saving:** `coauthor move` takes the anchor text from the file, so a modified
+  buffer is written first (its sync is queued ahead of the move). Re-anchoring
+  is refused while a round is open.
+- **Suggestion for `r`:** the first range of the last AI reply's `{edited …}`
+  when that reply has one, else the thread's current extmark lines, else its
+  last-known line, clamped to the buffer.
+- **Confirming:** `r` starts a linewise Visual selection and adds a
+  buffer-local Visual `<CR>` for that one re-anchor. Leaving Visual mode any
+  other way (a permanent `ModeChanged` handler) cancels it and removes the
+  mapping, so nothing moves without `<CR>`.
+
 ## Findings from the mockups
 
 ### Second mockup (final design, recording above)
