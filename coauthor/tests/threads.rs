@@ -211,6 +211,9 @@ fn list_prints_the_agent_rules_and_commands_first() {
     let thread_at =
         text.find("### t1 · lines 3-3 · awaiting ai\n> The rollout takes two weeks.\n\n**me:** give phases").unwrap();
     assert!(rules_at < commands_at && commands_at < thread_at);
+    let own_command =
+        text.find("Run each coauthor command as its own shell command").expect("one-command note missing");
+    assert!(commands_at < own_command && own_command < thread_at);
 
     // Paths that need quoting are quoted.
     env.write_doc("my notes.md", "x\n");

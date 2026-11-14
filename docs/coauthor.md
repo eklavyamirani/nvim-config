@@ -1,7 +1,8 @@
 # Coauthor threads — design record
 
-Status: **being implemented** (#20). Details the design left open are recorded
-in [Implementation notes](#implementation-notes).
+Status: **implemented** (#20). Details the design left open are recorded in
+[Implementation notes](#implementation-notes); one live agent run is recorded in
+[Findings from a live round](#findings-from-a-live-round).
 
 ## Goal
 
@@ -527,6 +528,42 @@ Small details decided during implementation, within the design above.
 - **Testing hook:** `require('config.coauthor').options.agent_command(prompt, ctx)`
   replaces the agent command; the tests use a stub agent
   (`tests/coauthor_stub_agent.lua`) that drives the real CLI.
+
+### End-to-end test
+
+`tests/coauthor_e2e.lua` (CI, all platforms) runs the whole flow through the real
+binary: three comments, headless submit with the lock checked mid-round, a stub
+agent (`tests/coauthor_stub_agent.lua`, mode `e2e`) that runs `list`, rewrites
+the file, `move`s one thread, replies `--edited` to two (forgetting `move` for
+one, which orphans it) and `--no-edit` to the third, then `done`; then the round
+summary, the orphan re-anchored from the side split with the `{edited}`
+suggestion, the review diff, a user reply, a resolve and a second round.
+
+## Findings from a live round
+
+One headless round with Claude Code 2.1.325 (authenticated) on a three-comment
+sample document, from Neovim with `vim.g.review_context_provider = 'claude'`:
+
+1. **Run 1:** the agent edited the document well, then put every `move`,
+   `reply` and `done` into one `&&` chain that began with a `\` line
+   continuation. Claude Code did not match that to `Bash(coauthor *)`, and
+   `dontAsk` denied it; the agent stopped and said so (it did not work around
+   the denial, as the tool told it). Neovim ended the round on exit and ran
+   `done`: two threads became orphans, all three still awaited ai. The same flow
+   run outside Neovim had chained the commands without the leading `\` and
+   passed: the formatting varies between runs.
+   *Fixed:* `coauthor list` now ends its Commands section with "Run each
+   coauthor command as its own shell command: no `&&` chains, `;` or `\` line
+   continuations." The agent rules stay verbatim.
+2. **Run 2 (with that line):** every command ran on its own with no denial:
+   `list`, one Write, three `move`s, `reply --edited` ×2, `reply --no-edit`,
+   `done`. Notification: `round done · 3 replies · 2 edits · 0 orphaned`.
+3. **Run 2 also showed a bug:** ending the round on the agent's own `done`
+   killed the agent while it wrote its final message, and the kill was reported
+   as a failure. *Fixed in #28:* only `:CoauthorCancel` stops the agent.
+
+Copilot CLI was not available in the implementing environment (installing it
+was not permitted there), so no live Copilot round was run.
 
 ## Findings from the mockups
 

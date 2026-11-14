@@ -473,7 +473,12 @@ fn list(store: &Store, doc: &Path, awaiting: Option<Who>, json: bool) -> Result<
     ] {
         out.push_str(&format!("    {command}\n        {what}\n"));
     }
-    out.push_str("\nIDs look like t3; line ranges are 1-based and inclusive, in the document as it is now.\n\n");
+    out.push_str("\nIDs look like t3; line ranges are 1-based and inclusive, in the document as it is now.\n");
+    // Found in a live run: a headless agent may be allowed only commands that
+    // start with `coauthor`, and a chain or a leading line continuation is denied.
+    out.push_str(
+        "Run each coauthor command as its own shell command: no `&&` chains, `;` or `\\` line continuations.\n\n",
+    );
     if snapshot.doc.is_none() {
         out.push_str(&format!("Warning: cannot read {canonical}; every thread shows as orphaned.\n\n"));
     }

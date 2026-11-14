@@ -449,6 +449,10 @@ you can keep commenting; the document reloads only when the agent runs
 round, e.g. `3 replies · 1 edit · 1 orphaned`, and `<leader>td` shows what changed.
 The reload is a single `u`.
 
+Moved or renamed a document? `coauthor mv OLD NEW` brings its threads along;
+`coauthor prune` deletes threads of documents that no longer exist, and
+`coauthor path DOC` prints where a document's threads are stored.
+
 In the side split: `<CR>` jumps to the thread in the document, `x` resolves it,
 `a` accepts a drifted anchor (save first), `r` re-anchors it, `q` closes. `r`
 selects a suggested range in the document (where the agent's last reply says
