@@ -175,6 +175,32 @@ Experimental keymaps get an `(experimental)` suffix in `desc` so which-key shows
 it, and a cheatsheet section lists them. Initially: headless submit, float view,
 fuzzy drift matching.
 
+## Findings from the mockup
+
+A scripted mockup (real Neovim 0.12 with catppuccin, mini.notify, lualine and
+render-markdown configured like this repo) surfaced these. Open until decided.
+
+1. **Commented lines are hard to see.** With no signs or virtual text, nothing
+   in the document marks an anchored line; only the side split reveals it when
+   the cursor lands there. The "no decoration by default" decision is too
+   minimal.
+2. **render-markdown conceals the `[edited 18]` tag brackets** (treated as a
+   shortcut link), in both the side split and the raw sidecar. That breaks the
+   "keep source characters visible" rule.
+3. **The file watcher sees Neovim's own sidecar writes.** The mock ignores an
+   event when the file content equals what Neovim last wrote.
+4. **Watching the document file breaks on rename-based saves.** A save that
+   writes a temp file and renames it (Neovim's `backupcopy=no`, and possibly
+   agent edit tools) invalidates a per-file watch handle. The mock needed
+   `backupcopy=yes` and watched only the sidecar.
+5. **An orphan's last-known line can be another thread's line.** t3 orphaned at
+   line 17, where t2 is anchored, so both quickfix entries point at line 17.
+6. **mini.notify's top-right popup covers the top of the side split**, which is
+   where the "Needs anchor" section lives.
+
+The mock's re-anchor picker was the built-in `vim.ui.select`; the design keeps
+fzf-lua.
+
 ## Pinned
 
 ### Change detection
