@@ -1,5 +1,6 @@
 [tools]
 # The SDK csharp-ls needs; pinned exactly, like the global mise config.
 dotnet = "10.0.403"
-# cargo, for rust-analyzer's project loading (`cargo metadata`).
+# cargo, for rust-analyzer's project loading (`cargo metadata`) and to build
+# the coauthor CLI (`make deps`).
 rust = "1.99.1"

@@ -1,11 +1,11 @@
-.PHONY: deps test check-config test-config test-review test-lsp test-copilot
+.PHONY: deps test check-config test-coauthor test-config test-review test-lsp test-copilot
 
 # Thin wrappers over the cross-platform scripts; on Windows run them with `nvim -l` directly.
 NVIM ?= nvim
 RUN_TESTS = $(NVIM) -l scripts/run_tests.lua
 
 test:
-	$(RUN_TESTS) check config review
+	$(RUN_TESTS) check coauthor config review
 
 deps:
 	$(NVIM) -l scripts/install_deps.lua
@@ -13,6 +13,9 @@ deps:
 
 check-config:
 	$(RUN_TESTS) check
+
+test-coauthor:
+	$(RUN_TESTS) coauthor
 
 test-config:
 	$(RUN_TESTS) config

@@ -3,3 +3,4 @@
 __pycache__/
 /copilot-homes/*
 !/copilot-homes/.gitkeep
+/coauthor/target/

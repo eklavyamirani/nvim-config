@@ -5,6 +5,7 @@ local python = vim.fn.executable('python3') == 1 and 'python3' or 'python'
 
 local suites = {
   { 'check', { python, 'scripts/check_config.py' } },
+  { 'coauthor', { 'cargo', 'test', '--manifest-path', 'coauthor/Cargo.toml', '--locked' } },
   { 'config', 'init.lua', 'tests/config.lua' },
   { 'config', 'init.lua', 'tests/csharp_lsp.lua' },
   { 'config', 'init.lua', 'tests/treesitter.lua' },
@@ -24,7 +25,7 @@ local suites = {
 }
 
 local selected = {}
-for _, name in ipairs(#arg > 0 and arg or { 'check', 'config', 'review' }) do selected[name] = true end
+for _, name in ipairs(#arg > 0 and arg or { 'check', 'coauthor', 'config', 'review' }) do selected[name] = true end
 
 local write = function(_, data) if data then io.stdout:write(data) end end
 local failed = {}
