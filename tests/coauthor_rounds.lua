@@ -64,7 +64,7 @@ assert(baseline == coauthor.baseline_path(api.nvim_buf_get_name(buf)))
 assert(vim.deep_equal(vim.fn.readfile(baseline), vim.fn.readfile(path)), 'baseline differs from the saved document')
 assert(not vim.bo[buf].modifiable and vim.bo[buf].readonly, 'buffer not locked')
 local prompt = table.concat(copied, '\n')
-assert(prompt == coauthor.prompt(path), prompt)
+assert(prompt == coauthor.prompt(api.nvim_buf_get_name(buf)), prompt)
 assert(prompt:find('coauthor list ', 1, true) and prompt:find('@', 1, true), prompt)
 assert(notice('round open'), vim.inspect(H.notices))
 
