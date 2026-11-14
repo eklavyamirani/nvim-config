@@ -1,7 +1,7 @@
 # Coauthor threads — design record
 
-Status: **design, not implemented.** Captures decisions so far; sections marked
-*Pinned* still need discussion before implementation.
+Status: **design, not implemented.** All open questions are decided; ready for
+implementation.
 
 ## Goal
 
@@ -38,6 +38,7 @@ file is self-describing for any agent or fresh session.
 
 ```markdown
 <!-- ai-threads v1 · doc: docs/rollout.md
+round: open
 Agent rules:
 - Reply to every thread whose last message is **me:**. Editing the doc is
   optional: answer without editing when the comment is a question or you disagree.
@@ -45,7 +46,9 @@ Agent rules:
 - If your edit moves a thread's anchored text, update its `lines` and `>` snapshot.
 - If your edit removes a thread's anchored text, point `lines` at the
   replacement, or reply explaining why it is resolved.
-- Never edit **me:** lines or threads marked `resolved`. -->
+- Never edit **me:** lines or threads marked `resolved`.
+- Never create threads or change thread ids.
+- As your last step, change `round: open` to `round: done`. -->
 
 ## t1 · lines 12-14
 > The rollout takes two weeks.
@@ -86,6 +89,51 @@ Only threads awaiting ai are in scope.
 
 **Experimental:** headless submit runs `claude -p` with Edit allowed on the
 document and sidecar, using the same file contract.
+
+### Rounds and write races
+
+A round runs from submit until the agent finishes. Each state has one owner per
+file, so neither side overwrites the other.
+
+| State | Document | Sidecar |
+|---|---|---|
+| idle | user | Neovim |
+| round open | agent (buffer hard-locked) | agent |
+
+**Start:** submit sets `round: open` in the sidecar header, then hard-locks the
+document buffer: `nomodifiable` and `readonly`. `readonly` matters too: a `:w`
+of an unmodified buffer would still overwrite the agent's edits.
+
+**During the round:**
+
+- Neovim never writes the sidecar. New comments, replies and re-anchors queue
+  in memory and show as dim *queued* entries in the side split. Flushing
+  anchor positions on `:w` waits for the round to end.
+- File-watcher events only update an "agent writing…" indicator in the
+  statusline. No reload, resolve or notification until the round ends, so a
+  doc write landing before the sidecar write cannot produce fake orphans.
+
+**End**, whichever comes first:
+
+- the sidecar header reads `round: done` (debounced, in case the agent's last
+  writes arrive out of order),
+- the headless agent process exits,
+- `:CoauthorDone`, the manual fallback when the agent forgets the marker.
+
+`:CoauthorCancel` ends the round without waiting (and kills a headless agent).
+
+**On end:** unlock the buffer, reload the document and sidecar, resolve anchors
+once, then merge the queue:
+
+1. queued replies append to their threads;
+2. queued new threads take the next ids (only Neovim assigns ids);
+3. queued comments were anchored against the pre-round text, so they go
+   through the resolution ladder and may come out orphaned;
+4. write the sidecar once, notify once.
+
+Known gap: an agent write arriving after the round ended is handled as an
+unsolicited update (reload and notify). If the buffer has unsaved edits at that
+point, Neovim's built-in W12 prompt is the only guard.
 
 ### Review
 
@@ -198,12 +246,12 @@ fuzzy drift matching.
   so Neovim's own writes don't trigger a round.
 - `FocusGained` → `:checktime` as a fallback for a missed event.
 - What happens when the document buffer has unsaved edits at that moment is
-  part of Write races.
+  covered by Rounds and write races.
 
 ## Findings from the mockup
 
 A scripted mockup (real Neovim 0.12 with catppuccin, mini.notify, lualine and
-render-markdown configured like this repo) surfaced these. Open until decided.
+render-markdown configured like this repo) surfaced these; each is now decided.
 
 1. **Commented lines are hard to see.** With no signs or virtual text, nothing
    in the document marks an anchored line; only the side split reveals it when
@@ -232,14 +280,3 @@ render-markdown configured like this repo) surfaced these. Open until decided.
 
 The mock's re-anchor picker was the built-in `vim.ui.select`; the design keeps
 fzf-lua.
-
-## Pinned
-
-### Write races
-
-Neovim and the agent both write the sidecar, and the agent writes the document
-while it may be open with unsaved edits. A comment added while the agent is
-mid-edit can be clobbered. Candidate: a pending state after submit in which new
-comments queue in memory and flush when the sidecar changes on disk or on
-`:CoauthorDone`. Needs: the end-of-turn signal for the interactive CLI case,
-and merge rules if both sides changed.
