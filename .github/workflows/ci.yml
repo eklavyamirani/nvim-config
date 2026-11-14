@@ -107,13 +107,11 @@ jobs:
             .ci/data/nvim-data/site
           # A hit is never re-saved, so the key must change whenever the wanted parsers do.
           key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('nvim-pack-lock.json', 'lua/config/plugins.lua', 'lua/config/treesitter.lua') }}
-      - name: Install locked plugins
-        if: ${{ !cancelled() }}
-        run: nvim --headless --cmd "set runtimepath^=$GITHUB_WORKSPACE" -u init.lua +qa
-      # Otherwise every full-config Neovim in the suites starts its own download
-      # and compile of any missing parser, races the others on the cache dir, and
-      # orphans the children when the test quits.
-      - name: Install parsers
+      # One blocking run: a `+qa` startup would begin the parser downloads and
+      # orphan them. Without this, every full-config Neovim in the suites starts
+      # its own download and compile of any missing parser, races the others on
+      # the cache dir, and orphans the children when the test quits.
+      - name: Install locked plugins and parsers
         if: ${{ !cancelled() }}
         run: nvim -l scripts/install_deps.lua parsers
       - name: Check configuration specification
