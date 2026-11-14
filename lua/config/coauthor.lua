@@ -722,6 +722,67 @@ local function reanchor_mode_changed(event)
   notify('re-anchor cancelled')
 end
 
+-- ---------------------------------------------------------------- headless submit (experimental)
+
+M.options = {}
+
+-- The agent command for a headless round: the bridge's provider
+-- (`vim.g.review_context_provider`), allowed to edit only the document and to
+-- run only `coauthor`. `M.options.agent_command(prompt, ctx)` replaces it.
+function M.agent_command(prompt, ctx)
+  if M.options.agent_command then return M.options.agent_command(prompt, ctx) end
+  local provider = vim.g.review_context_provider or 'copilot'
+  if provider == 'claude' then
+    return { 'claude', '-p', prompt, '--output-format', 'text', '--permission-mode', 'dontAsk',
+      '--tools', 'Read,Grep,Glob,Edit,Write,Bash', '--allowedTools', 'Bash(coauthor *)', 'Edit(./' .. ctx.relative .. ')',
+      '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--no-session-persistence' }
+  end
+  if provider ~= 'copilot' then error('Set review_context_provider to copilot or claude.') end
+  local ok, bridge = pcall(require, 'config.review_context')
+  return { 'copilot', '--silent', '--disable-builtin-mcps', '--no-ask-user', '--no-auto-update', '--no-color',
+    '--stream', 'off', '--prompt', prompt,
+    '--allow-tool=shell(coauthor:*),write(' .. ctx.relative .. '),read' }, ok and bridge.copilot_env(ctx.root) or nil
+end
+
+local function tail(text, lines)
+  local all = vim.split(vim.trim(text or ''), '\n', { plain = true })
+  return table.concat(vim.list_slice(all, math.max(1, #all - lines + 1)), '\n')
+end
+
+-- `<leader>tS`: submit, then run the agent without a terminal. Its exit ends
+-- the round, running `coauthor done` if the agent did not.
+function M.submit_headless()
+  M.submit({ start = function(_, buf)
+    local doc = docs[buf]
+    local round = doc.round
+    local root = vim.fs.root(doc.path, '.git') or vim.fs.dirname(doc.path)
+    local relative = vim.fs.relpath(root, doc.path) or doc.path
+    local ok, argv, env = pcall(M.agent_command, M.prompt_for(relative), { path = doc.path, root = root, relative = relative })
+    local started, job
+    if ok then
+      started, job = pcall(vim.system, argv, { cwd = root, env = env, text = true }, function(out)
+        vim.schedule(function()
+          local failed = out.code ~= 0 and not round.cancelled
+          if failed then
+            notify(('agent exited with %s:\n%s'):format(out.signal ~= 0 and ('signal ' .. out.signal) or out.code,
+              tail(out.stderr ~= '' and out.stderr or out.stdout, 8)), vim.log.levels.ERROR)
+          end
+          -- Still this round: the agent did not run `coauthor done`.
+          if docs[buf] and docs[buf].round == round then
+            M.run({ 'done', doc.path }, function(snapshot) apply(buf, snapshot) end)
+          end
+        end)
+      end)
+    end
+    if not (ok and started) then
+      notify('could not start the agent: ' .. tostring(ok and job or argv), vim.log.levels.ERROR)
+      return M.end_round(buf, 'cancelled')
+    end
+    round.job = job
+    notify(('round open · %s is working headless; :CoauthorCancel stops it'):format(argv[1]))
+  end })
+end
+
 -- ---------------------------------------------------------------- change detection
 
 -- Directory watches, shared by every document in a directory. A per-file watch
@@ -845,8 +906,9 @@ local function shell_word(text)
   return "'" .. text:gsub("'", [['\'']]) .. "'"
 end
 
-function M.prompt(path)
-  local relative = vim.fn.fnamemodify(path, ':.')
+function M.prompt(path) return M.prompt_for(vim.fn.fnamemodify(path, ':.')) end
+
+function M.prompt_for(relative)
   return ('Address the open comment threads on @%s: run `coauthor list %s` and follow its instructions.')
     :format(relative, shell_word(relative))
 end
@@ -909,8 +971,11 @@ function M.end_round(buf, how)
   if not doc or not doc.round then return end
   local round = doc.round
   doc.round = nil
+  round.cancelled = how == 'cancelled'
   unlock(buf, doc, round)
-  if round.job then pcall(function() round.job:kill(15) end) end
+  -- An agent that ran `coauthor done` is left to finish its last message;
+  -- only a cancel stops it.
+  if round.job and how == 'cancelled' then pcall(function() round.job:kill(15) end) end
   local views = {}
   for _, win in ipairs(vim.fn.win_findbuf(buf)) do
     views[win] = api.nvim_win_call(win, vim.fn.winsaveview)
@@ -1096,6 +1161,8 @@ function M.setup()
   end, { desc = 'Coauthor: resolve thread' })
   vim.keymap.set('n', '<leader>ts', function() M.submit() end,
     { desc = 'Coauthor: submit threads (save, lock, yank prompt)' })
+  vim.keymap.set('n', '<leader>tS', M.submit_headless,
+    { desc = 'Coauthor: submit and run the agent headless (experimental)' })
   vim.keymap.set('n', '<leader>td', M.diff, { desc = 'Coauthor: diff against the review baseline' })
   vim.keymap.set('x', '<leader>tr', M.reanchor_selection, { desc = 'Coauthor: re-anchor a thread to the selection' })
   vim.keymap.set('n', ']t', function() M.jump(1) end, { desc = 'Coauthor: next thread (else :tnext)' })

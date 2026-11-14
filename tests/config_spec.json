@@ -83,7 +83,8 @@
       "<leader>tl": "Coauthor: threads to quickfix",
       "<leader>tx": "Coauthor: resolve thread",
       "<leader>ts": "Coauthor: submit threads (save, lock, yank prompt)",
-      "<leader>td": "Coauthor: diff against the review baseline"
+      "<leader>td": "Coauthor: diff against the review baseline",
+      "<leader>tS": "Coauthor: submit and run the agent headless (experimental)"
     },
     "x": {
       "<leader>ay": "AI: yank selection to clipboard",
@@ -117,6 +118,7 @@
     "tests/coauthor_views.lua": "Coauthor side split with and without orphans, its keys, float, quickfix order, statusline and resolve",
     "tests/coauthor_rounds.lua": "Coauthor submit, lock, mid-round agent writes, round end by done/:CoauthorDone/:CoauthorCancel, rename-safe watching and review diff",
     "tests/coauthor_reanchor.lua": "Coauthor re-anchoring from a selection and from the side split, the {edited} suggestion, adjusting and cancelling",
+    "tests/coauthor_headless.lua": "Coauthor headless submit with a stub agent: success, exit without done, failure, cancel, and agent permissions",
     "tests/review_context.lua": "Explanation panes, exact selections, private notes, request ordering, and recovery",
     "tests/review_route.lua": "Committed-diff ordering, marks, persistence, migration, and assistant routing",
     "tests/review_tree.lua": "Tree/list rendering, nested marks, folding, and navigation",

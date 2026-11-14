@@ -11,6 +11,7 @@ local suites = {
   { 'coauthor', 'NONE', 'tests/coauthor_views.lua' },
   { 'coauthor', 'NONE', 'tests/coauthor_rounds.lua' },
   { 'coauthor', 'NONE', 'tests/coauthor_reanchor.lua' },
+  { 'coauthor', 'NONE', 'tests/coauthor_headless.lua' },
   { 'config', 'init.lua', 'tests/config.lua' },
   { 'config', 'init.lua', 'tests/csharp_lsp.lua' },
   { 'config', 'init.lua', 'tests/treesitter.lua' },
