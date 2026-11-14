@@ -280,3 +280,27 @@ render-markdown configured like this repo) surfaced these; each is now decided.
 
 The mock's re-anchor picker was the built-in `vim.ui.select`; the design keeps
 fzf-lua.
+
+## Alternatives considered
+
+### CRDT
+
+Rejected. A CRDT avoids conflicts only when every writer emits operations
+through it; the agent rewrites whole files with its edit tools, so its changes
+could only enter as snapshot diffs, which is a three-way merge with extra
+machinery. For prose, a CRDT resolves concurrent edits by silently
+interleaving them, where the hard lock produces no conflicts at all. No Lua CRDT
+library was found; Ethersync (Automerge-based, with a Neovim plugin) needs an
+external daemon.
+
+### Merge-friendly sidecar (alternate to the round queue)
+
+The sidecar is already close to a CRDT: messages are append-only, only Neovim
+assigns thread ids, and status is derived. Giving every message a stable id
+(`t2.3`) makes merging a set union with no conflicting cases. Neovim keeps a
+journal of the user's messages and re-adds any an agent write dropped (the
+agent rewrote from a stale read).
+
+That would let Neovim write the sidecar during a round, replacing the queue.
+The document stays hard-locked: prose merges are the real hazard. Not needed
+for v1; revisit if the queue proves limiting.
