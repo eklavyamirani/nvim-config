@@ -374,6 +374,38 @@ Small details decided during implementation, within the design above.
   `prune` skips (and reports) files it cannot parse; `mv` refuses to overwrite
   the target's threads; `prune --dry-run` lists without deleting.
 
+### Thread commands and anchoring (#23)
+
+- **JSON:** every command that changes threads prints the same snapshot as
+  `list --json` (document, threads file, `round`, `revision`, `counts`, and per
+  thread `id`, `lines`, `stored`, `state`, `moved`, `status`, `anchor`, `was`,
+  `messages`), plus a `result` for that command. `revision` is the SHA-256 of
+  the threads file's bytes, the value Neovim's `sha256()` gives for the file.
+  Status keys are `awaiting_ai`, `awaiting_me` and `resolved`.
+- **`list`:** the text form shows unresolved threads (`--awaiting` narrows it);
+  the JSON form includes resolved ones. With the document missing, every thread
+  shows as orphaned.
+- **Messages:** the words of `TEXT` are joined with spaces, so quoting is
+  optional. A new message from either side un-resolves a resolved thread. Ids
+  are accepted as `t3` or `3`.
+- **Tags:** `--edited 6,10-12` is stored as `{edited 6, 10-12}`; a single line is
+  written as `6`. JSON splits a tag into `edited` (ranges) / `no_edit` and `body`.
+- **`comment --lines`:** `--anchor-text` is optional (defaults to those lines on
+  disk) and must have exactly `B-A+1` lines.
+- **`move`:** keeps the anchor text from before the *first* re-anchor as `was:`.
+  Moving onto identical text adds no `was:` and clears a drift, which is how
+  the side split's `a` accepts one.
+- **`sync`:** reads anchor text from the saved document (it runs after `:w`), so a
+  user's edit inside an anchored range updates the anchor without a `was:`.
+  Unknown ids and out-of-range lines are skipped and reported; `--anchors -`
+  reads the JSON from stdin.
+- **`done`:** re-finds every thread, resolved ones included, saves new lines and
+  the drift flag, keeps orphans at their last-known lines, and sets
+  `round: done`.
+- **Ladder:** lines compare exactly (only a trailing CR is ignored); between
+  equally near matches the earlier wins; a stored drift stays `drifted` while
+  the text is found.
+
 ## Findings from the mockups
 
 ### Second mockup (final design, recording above)

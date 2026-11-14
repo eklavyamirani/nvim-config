@@ -40,7 +40,44 @@ coauthor prune [--dry-run]             # delete threads of documents that no lon
 ```
 
 Every command accepts `--json`. `coauthor --help` and `coauthor <command> --help`
-list the rest.
+document all of them.
+
+## Commands
+
+Agent-facing (an agent needs nothing else: `list` prints its rules):
+
+```sh
+coauthor list DOC [--awaiting ai|me]          # rules, commands, threads; read-only
+coauthor reply DOC t1 --edited 6,10-12 TEXT   # reply after editing the document
+coauthor reply DOC t1 --no-edit TEXT          # reply without editing it
+coauthor move DOC t1 12-14                    # re-anchor to lines of DOC as it is now
+coauthor done DOC                             # end the round; re-find and save anchors
+```
+
+Editor-facing (Neovim always adds `--json`):
+
+```sh
+coauthor comment DOC --lines 12-14 [--anchor-text TEXT] MESSAGE   # new thread
+coauthor comment DOC --thread t1 MESSAGE                          # user reply
+coauthor resolve DOC t1
+coauthor sync DOC --anchors '[{"id":"t1","lines":[12,14]}]'       # or --anchors - (stdin)
+coauthor round DOC open
+```
+
+Status is derived from the last message: `**me:**` means awaiting ai, `**ai:**`
+awaiting me; `resolved` is the only stored status.
+
+## Anchoring
+
+`list` and `done` re-find each thread in the document on disk:
+
+1. the stored lines still hold the anchor text: **anchored**;
+2. the exact text is found elsewhere: **anchored** there, or with several
+   matches the nearest one, **drifted** (kept until accepted with `move`);
+3. otherwise **orphaned**, keeping the last-known lines.
+
+`list` only reports; `done` saves. `move` keeps the original anchor text as
+`was:` until the thread is resolved.
 
 ## Threads file format
 
