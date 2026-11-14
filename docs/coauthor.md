@@ -41,7 +41,7 @@ file is self-describing for any agent or fresh session.
 Agent rules:
 - Reply to every thread whose last message is **me:**. Editing the doc is
   optional: answer without editing when the comment is a question or you disagree.
-- Prefix each reply with [edited L-L] or [no edit].
+- Prefix each reply with {edited L-L} or {no edit}.
 - If your edit moves a thread's anchored text, update its `lines` and `>` snapshot.
 - If your edit removes a thread's anchored text, point `lines` at the
   replacement, or reply explaining why it is resolved.
@@ -51,9 +51,9 @@ Agent rules:
 > The rollout takes two weeks.
 
 **me:** too vague, give phases
-**ai:** [edited 12-18] Split into 3 phases.
+**ai:** {edited 12-18} Split into 3 phases.
 **me:** why 3 and not 2?
-**ai:** [no edit] Phase 2 has the migration freeze; merging it with 1 hides that dependency.
+**ai:** {no edit} Phase 2 has the migration freeze; merging it with 1 hides that dependency.
 ```
 
 - Threads are conversations. Any number of turns; a doc edit is an optional
@@ -142,7 +142,12 @@ Both, to compare in use:
   `x` resolve.
 - **Float** — the thread under the cursor. *Experimental.*
 
-No signs or virtual text in the document by default.
+Anchored lines are marked in the document (option B from the mockup):
+
+- The line number is coloured by whose turn it is (peach: awaiting me, blue:
+  awaiting ai). Foreground only, no signs, so gitsigns keeps the sign column.
+- A dim thread id (`t1`) as end-of-line virtual text on the first anchored line,
+  so quickfix and sidecar entries can be matched at a glance.
 
 ### Scope and toggle
 
@@ -182,11 +187,12 @@ render-markdown configured like this repo) surfaced these. Open until decided.
 
 1. **Commented lines are hard to see.** With no signs or virtual text, nothing
    in the document marks an anchored line; only the side split reveals it when
-   the cursor lands there. The "no decoration by default" decision is too
-   minimal.
+   the cursor lands there. *Decided:* coloured line numbers plus an
+   end-of-line thread id (see Thread views).
 2. **render-markdown conceals the `[edited 18]` tag brackets** (treated as a
    shortcut link), in both the side split and the raw sidecar. That breaks the
-   "keep source characters visible" rule.
+   "keep source characters visible" rule. *Decided:* tags use braces,
+   `{edited 18}` / `{no edit}`, which markdown leaves alone.
 3. **The file watcher sees Neovim's own sidecar writes.** The mock ignores an
    event when the file content equals what Neovim last wrote.
 4. **Watching the document file breaks on rename-based saves.** A save that
@@ -196,7 +202,8 @@ render-markdown configured like this repo) surfaced these. Open until decided.
 5. **An orphan's last-known line can be another thread's line.** t3 orphaned at
    line 17, where t2 is anchored, so both quickfix entries point at line 17.
 6. **mini.notify's top-right popup covers the top of the side split**, which is
-   where the "Needs anchor" section lives.
+   where the "Needs anchor" section lives. *Decided:* keep notify every round;
+   the overlap lasts a few seconds.
 
 The mock's re-anchor picker was the built-in `vim.ui.select`; the design keeps
 fzf-lua.
