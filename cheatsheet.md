@@ -464,6 +464,15 @@ buffers.
 | Key | Action |
 | --- | --- |
 | `<leader>tf` | The thread under the cursor in a float; moving the cursor closes it |
+| `<leader>tS` | Submit and run the agent headless; its exit ends the round (`:CoauthorCancel` stops it) |
+
+Headless submit uses the bridge's provider (`vim.g.review_context_provider`,
+Copilot by default) and allows it only to edit the document and run `coauthor`:
+Claude Code gets `--permission-mode dontAsk --allowedTools "Bash(coauthor *)"
+"Edit(./<doc>)"`, Copilot CLI `--allow-tool=shell(coauthor:*),write(<doc>),read`.
+It runs from the document's Git root. With Claude Code's sandbox enabled, add
+`sandbox.filesystem.allowWrite: ["~/.local/state/coauthor"]` to its settings, or
+the agent cannot record replies.
 
 A commented line's number is coloured by whose turn it is: peach awaiting you,
 blue awaiting the agent. A dim `t1` at the end of the first line names the

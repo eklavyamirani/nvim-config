@@ -503,6 +503,31 @@ Small details decided during implementation, within the design above.
   other way (a permanent `ModeChanged` handler) cancels it and removes the
   mapping, so nothing moves without `<CR>`.
 
+### Headless submit (#28, experimental)
+
+- **Flags, checked against the agents' current docs:** Claude Code (2.1.325
+  installed here) `-p PROMPT --permission-mode dontAsk --tools
+  Read,Grep,Glob,Edit,Write,Bash --allowedTools "Bash(coauthor *)"
+  "Edit(./<doc>)" --strict-mcp-config --mcp-config '{"mcpServers":{}}'
+  --no-session-persistence`. `dontAsk` turns anything not allowed into a
+  denial instead of a prompt nobody can answer; an `Edit(...)` rule also covers
+  `Write`. Copilot CLI: `--prompt PROMPT --allow-tool=shell(coauthor:*),write(<doc>),read
+  --no-ask-user --silent --disable-builtin-mcps --no-auto-update`, with the
+  bridge's per-workspace `COPILOT_HOME` so the run stays out of the user's
+  session list. Copilot CLI could not be installed in the implementing
+  environment; its flags come from GitHub's CLI command reference.
+- **Working directory:** the document's Git root (else its directory); the
+  prompt and the edit permission use the path relative to it.
+- **Exit:** a non-zero exit (other than the kill from `:CoauthorCancel`) is
+  reported with the last lines of stderr. If the round is still open, Neovim
+  then runs `coauthor done`, so anchors are always re-found. When the agent's
+  own `coauthor done` ends the round, the process is left to finish its final
+  message; only `:CoauthorCancel` stops it, with SIGTERM (TerminateProcess on Windows, where a `.cmd` shim's child may
+  outlive it).
+- **Testing hook:** `require('config.coauthor').options.agent_command(prompt, ctx)`
+  replaces the agent command; the tests use a stub agent
+  (`tests/coauthor_stub_agent.lua`) that drives the real CLI.
+
 ## Findings from the mockups
 
 ### Second mockup (final design, recording above)

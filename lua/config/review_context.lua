@@ -103,6 +103,9 @@ local function copilot_home(root, recreate)
   return home
 end
 
+-- The environment that keeps a Copilot run out of the user's session list (for coauthor).
+function M.copilot_env(root) return { COPILOT_HOME = copilot_home(root) } end
+
 local function save_answer()
   if not state.source or not state.answer then return end
   local _, path = files_for(state.source.root)
