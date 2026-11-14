@@ -158,6 +158,8 @@ local function apply(buf, snapshot, opts)
     if not seen[id] then unmark(buf, doc, id) end
   end
   changed(buf)
+  M.watch(buf)
+  if doc.round and snapshot.round == 'done' then M.end_round(buf, 'done') end
 end
 M.apply = apply
 
@@ -165,7 +167,10 @@ function M.refresh(buf, opts)
   buf = buf or api.nvim_get_current_buf()
   local doc = docs[buf]
   if not doc then return end
-  M.run({ 'list', doc.path }, function(snapshot) apply(buf, snapshot, opts) end)
+  M.run({ 'list', doc.path }, function(snapshot)
+    apply(buf, snapshot, opts)
+    if opts and opts.done then opts.done(snapshot) end
+  end)
 end
 
 function M.enable(buf, opts)
@@ -183,7 +188,9 @@ end
 
 function M.disable(buf)
   buf = (buf == nil or buf == 0) and api.nvim_get_current_buf() or buf
+  if docs[buf] and docs[buf].round then return notify('end the round first (:CoauthorDone or :CoauthorCancel)') end
   if api.nvim_buf_is_valid(buf) then api.nvim_buf_clear_namespace(buf, ns, 0, -1) end
+  M.unwatch(buf)
   docs[buf] = nil
   changed(buf)
 end
@@ -581,6 +588,287 @@ M.lualine = {
   cond = function() return M.enabled(0) end,
 }
 
+-- ---------------------------------------------------------------- change detection
+
+-- Directory watches, shared by every document in a directory. A per-file watch
+-- dies when a save replaces the file by rename, which Neovim ('backupcopy'
+-- auto) and the CLI both do, so the directory is watched and events are
+-- filtered by name.
+local watches = {} -- dir -> { handle, names = { [name] = { [key] = callback } } }
+local generations = {}
+
+local function debounce(key, fn)
+  generations[key] = (generations[key] or 0) + 1
+  local generation = generations[key]
+  vim.defer_fn(function()
+    if generations[key] == generation then fn() end
+  end, 100)
+end
+
+local function watch(path, key, callback)
+  local dir = vim.fs.dirname(path)
+  dir = vim.uv.fs_realpath(dir) or dir
+  local name = vim.fs.basename(path)
+  local entry = watches[dir]
+  if not entry then
+    local handle = vim.uv.new_fs_event()
+    if not handle then return end
+    entry = { handle = handle, names = {} }
+    local ok = handle:start(dir, {}, function(err, filename)
+      if err then return end
+      vim.schedule(function()
+        local base = filename and vim.fs.basename(filename)
+        for watched, callbacks in pairs(entry.names) do
+          -- Some platforms report no name; treat that as "anything changed".
+          if not base or base == watched then
+            for id, fn in pairs(callbacks) do debounce(id, fn) end
+          end
+        end
+      end)
+    end)
+    if not ok then
+      handle:close()
+      return
+    end
+    watches[dir] = entry
+  end
+  entry.names[name] = entry.names[name] or {}
+  entry.names[name][key] = callback
+end
+
+local function unwatch(key)
+  for dir, entry in pairs(watches) do
+    for name, callbacks in pairs(entry.names) do
+      callbacks[key] = nil
+      if not next(callbacks) then entry.names[name] = nil end
+    end
+    if not next(entry.names) then
+      entry.handle:stop()
+      entry.handle:close()
+      watches[dir] = nil
+    end
+  end
+end
+
+local function read_file(path)
+  local fd = vim.uv.fs_open(path, 'r', 438)
+  if not fd then return nil end
+  local stat = vim.uv.fs_fstat(fd)
+  local data = stat and vim.uv.fs_read(fd, stat.size, 0)
+  vim.uv.fs_close(fd)
+  return data
+end
+
+-- A threads-file change refreshes the views, unless it is the state Neovim's
+-- own last CLI call already returned.
+local function threads_changed(buf)
+  local doc = docs[buf]
+  if not doc or not doc.threads_path then return end
+  local data = read_file(doc.threads_path)
+  if data and doc.revision and vim.fn.sha256(data) == doc.revision then return end
+  M.refresh(buf)
+end
+
+-- A document change outside a round reloads an unmodified buffer (the reload
+-- re-resolves anchors); with unsaved edits Neovim's W12 prompt decides.
+local function document_changed(buf)
+  local doc = docs[buf]
+  if not doc or doc.locked or not api.nvim_buf_is_valid(buf) then return end
+  api.nvim_buf_call(buf, function() vim.cmd('setlocal autoread') end)
+  pcall(vim.cmd, 'checktime ' .. buf)
+  if api.nvim_buf_is_valid(buf) then api.nvim_buf_call(buf, function() vim.cmd('setlocal autoread<') end) end
+end
+
+function M.watch(buf)
+  local doc = docs[buf]
+  if not doc then return end
+  watch(doc.path, 'doc:' .. buf, function() document_changed(buf) end)
+  if doc.threads_path and doc.watched_threads ~= doc.threads_path then
+    doc.watched_threads = doc.threads_path
+    watch(doc.threads_path, 'threads:' .. buf, function() threads_changed(buf) end)
+  end
+end
+
+function M.unwatch(buf)
+  unwatch('doc:' .. buf)
+  unwatch('threads:' .. buf)
+end
+
+-- ---------------------------------------------------------------- rounds
+
+local function baseline_path(path)
+  local dir = vim.fn.stdpath('state') .. '/coauthor-baselines'
+  vim.fn.mkdir(dir, 'p')
+  return ('%s/%s-%s'):format(dir, vim.fn.sha256(path):sub(1, 16), vim.fs.basename(path))
+end
+M.baseline_path = baseline_path
+
+local function shell_word(text)
+  if text:match('^[%w_%-%./:\\@+,=]+$') then return text end
+  return "'" .. text:gsub("'", [['\'']]) .. "'"
+end
+
+function M.prompt(path)
+  local relative = vim.fn.fnamemodify(path, ':.')
+  return ('Address the open comment threads on @%s: run `coauthor list %s` and follow its instructions.')
+    :format(relative, shell_word(relative))
+end
+
+local function ai_counts(threads)
+  local counts = {}
+  for _, thread in ipairs(threads) do
+    local n = 0
+    for _, message in ipairs(thread.messages) do
+      if message.author == 'ai' then n = n + 1 end
+    end
+    counts[thread.id] = n
+  end
+  return counts
+end
+
+local function plural(n, one, many) return ('%d %s'):format(n, n == 1 and one or many) end
+
+local function summarize(buf, snapshot, before)
+  local replies, edits = 0, 0
+  for _, thread in ipairs(snapshot.threads or {}) do
+    local seen = 0
+    for _, message in ipairs(thread.messages) do
+      if message.author == 'ai' then
+        seen = seen + 1
+        if seen > (before[thread.id] or 0) then
+          replies = replies + 1
+          if message.edited then edits = edits + 1 end
+        end
+      end
+    end
+  end
+  return ('%s · %s · %d orphaned'):format(plural(replies, 'reply', 'replies'), plural(edits, 'edit', 'edits'),
+    #M.orphans(buf))
+end
+
+-- Locks the buffer: `nomodifiable` stops edits and `readonly` stops a :w of
+-- the unmodified buffer from overwriting the agent's work. Checks of the file
+-- (:checktime, FocusGained) are ignored until the round ends: 'autoread' would
+-- reload an unmodified buffer without asking FileChangedShell, so it is off.
+local function lock(buf, doc)
+  doc.round.modifiable, doc.round.readonly = vim.bo[buf].modifiable, vim.bo[buf].readonly
+  vim.bo[buf].modifiable, vim.bo[buf].readonly = false, true
+  api.nvim_buf_call(buf, function() vim.cmd('setlocal noautoread') end)
+  doc.locked = true
+end
+
+local function unlock(buf, doc, round)
+  doc.locked = false
+  if api.nvim_buf_is_valid(buf) then
+    vim.bo[buf].modifiable, vim.bo[buf].readonly = round.modifiable, round.readonly
+    api.nvim_buf_call(buf, function() vim.cmd('setlocal autoread<') end)
+  end
+end
+
+-- Ends the round: unlock, reload the document (undoable as one step, see
+-- 'undoreload'), re-place anchors from what `coauthor done` saved, notify once.
+function M.end_round(buf, how)
+  local doc = docs[buf]
+  if not doc or not doc.round then return end
+  local round = doc.round
+  doc.round = nil
+  unlock(buf, doc, round)
+  if round.job then pcall(function() round.job:kill(15) end) end
+  local views = {}
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+    views[win] = api.nvim_win_call(win, vim.fn.winsaveview)
+  end
+  doc.after_reload = function(snapshot)
+    for win, view in pairs(views) do
+      if api.nvim_win_is_valid(win) then api.nvim_win_call(win, function() vim.fn.winrestview(view) end) end
+    end
+    local verb = how == 'cancelled' and 'round cancelled' or 'round done'
+    notify(('%s · %s'):format(verb, summarize(buf, snapshot, round.before)))
+  end
+  api.nvim_buf_call(buf, function() vim.cmd('silent edit') end)
+end
+
+-- `<leader>ts`: :w, sync anchors, open the round, save the review baseline,
+-- lock the buffer and yank the prompt. `opts.start(prompt, buf)` replaces the
+-- yank (headless submit).
+function M.submit(opts)
+  opts = opts or {}
+  local buf = api.nvim_get_current_buf()
+  if not M.enable(buf) then return end
+  local doc = docs[buf]
+  if doc.round then return notify('a round is already open; :CoauthorDone or :CoauthorCancel ends it') end
+  local awaiting = 0
+  for _, thread in ipairs(doc.threads) do
+    if thread.status == 'awaiting_ai' then awaiting = awaiting + 1 end
+  end
+  if awaiting == 0 then return notify('no threads are awaiting ai') end
+  local ok, err = pcall(vim.cmd, 'silent write')
+  if not ok then return notify(tostring(err):match('E%d+:.*') or tostring(err), vim.log.levels.ERROR) end
+  -- The write's BufWritePost sync is queued ahead of this.
+  M.run({ 'round', doc.path, 'open' }, function(snapshot)
+    apply(buf, snapshot)
+    vim.uv.fs_copyfile(doc.path, baseline_path(doc.path))
+    doc.round = { before = ai_counts(doc.threads) }
+    lock(buf, doc)
+    local prompt = M.prompt(doc.path)
+    if opts.start then
+      opts.start(prompt, buf)
+    else
+      vim.fn.setreg(vim.fn.has('clipboard') == 1 and '+' or '"', prompt)
+      notify(('round open · %s yanked; paste the prompt into your agent'):format(plural(awaiting, 'thread', 'threads')))
+    end
+  end)
+end
+
+-- :CoauthorDone: the manual end when the agent forgets `coauthor done`.
+function M.done()
+  local buf = api.nvim_get_current_buf()
+  local doc = docs[buf]
+  if not doc then return notify('off for this buffer (:Coauthor)') end
+  if not doc.round then return notify('no round is open') end
+  M.run({ 'done', doc.path }, function(snapshot) apply(buf, snapshot) end)
+end
+
+function M.cancel()
+  local buf = api.nvim_get_current_buf()
+  local doc = docs[buf]
+  if not (doc and doc.round) then return notify('no round is open') end
+  M.end_round(buf, 'cancelled')
+end
+
+-- `<leader>td`: native diff against the review baseline; again to close it.
+function M.diff()
+  local buf = api.nvim_get_current_buf()
+  local doc = docs[buf]
+  if not doc then return notify('off for this buffer (:Coauthor)') end
+  if doc.diff_win and api.nvim_win_is_valid(doc.diff_win) then
+    api.nvim_win_close(doc.diff_win, true)
+    return
+  end
+  local baseline = baseline_path(doc.path)
+  if not vim.uv.fs_stat(baseline) then return notify('no review baseline yet; it is saved on submit') end
+  local doc_win, filetype = api.nvim_get_current_win(), vim.bo[buf].filetype
+  vim.cmd('leftabove vertical new')
+  local base_buf, base_win = api.nvim_get_current_buf(), api.nvim_get_current_win()
+  api.nvim_buf_set_lines(base_buf, 0, -1, false, vim.fn.readfile(baseline))
+  vim.bo[base_buf].buftype, vim.bo[base_buf].bufhidden, vim.bo[base_buf].swapfile = 'nofile', 'wipe', false
+  vim.bo[base_buf].filetype, vim.bo[base_buf].modifiable = filetype, false
+  pcall(api.nvim_buf_set_name, base_buf, 'coauthor://baseline/' .. vim.fs.basename(doc.path))
+  vim.cmd('diffthis')
+  api.nvim_create_autocmd('BufWipeout', {
+    group = group,
+    buffer = base_buf,
+    once = true,
+    callback = function()
+      if api.nvim_win_is_valid(doc_win) then api.nvim_win_call(doc_win, function() vim.cmd('diffoff') end) end
+      doc.diff_win = nil
+    end,
+  })
+  api.nvim_set_current_win(doc_win)
+  vim.cmd('diffthis')
+  doc.diff_win = base_win
+end
+
 function M.setup()
   highlights()
   api.nvim_create_autocmd('ColorScheme', { group = group, callback = highlights })
@@ -597,7 +885,12 @@ function M.setup()
     group = group,
     callback = function(event)
       local buf = event.buf
-      if docs[buf] then return M.refresh(buf, { rebuild = true }) end
+      local doc = docs[buf]
+      if doc then
+        local after = doc.after_reload
+        doc.after_reload = nil
+        return M.refresh(buf, { rebuild = true, done = after })
+      end
       if not eligible(buf) then return end
       M.run({ 'path', api.nvim_buf_get_name(buf) }, function(info)
         if info.exists and api.nvim_buf_is_valid(buf) then M.enable(buf, { quiet = true }) end
@@ -612,7 +905,12 @@ function M.setup()
   })
   api.nvim_create_autocmd('BufWipeout', {
     group = group,
-    callback = function(event) docs[event.buf] = nil end,
+    callback = function(event)
+      local doc = docs[event.buf]
+      if doc and doc.round and doc.round.job then pcall(function() doc.round.job:kill(15) end) end
+      M.unwatch(event.buf)
+      docs[event.buf] = nil
+    end,
   })
   -- The side split follows the cursor's thread.
   api.nvim_create_autocmd({ 'CursorMoved', 'BufEnter' }, {
@@ -631,7 +929,21 @@ function M.setup()
       if event.buf == float.doc and valid_win(float.win) then api.nvim_win_close(float.win, true) end
     end,
   })
+  -- During a round the file is the agent's, so a changed-file check (FocusGained,
+  -- :checktime) does nothing until it ends; everywhere else 'ask' keeps
+  -- Neovim's usual prompt.
+  api.nvim_create_autocmd('FileChangedShell', {
+    group = group,
+    callback = function(event)
+      local doc = docs[event.buf]
+      vim.v.fcs_choice = doc and doc.round and '' or 'ask'
+    end,
+  })
+  -- A missed file event is caught when Neovim regains focus.
+  api.nvim_create_autocmd('FocusGained', { group = group, command = 'silent! checktime' })
   api.nvim_create_user_command('Coauthor', M.toggle, { desc = 'Toggle coauthor threads for this buffer' })
+  api.nvim_create_user_command('CoauthorDone', M.done, { desc = 'End the coauthor round (runs coauthor done)' })
+  api.nvim_create_user_command('CoauthorCancel', M.cancel, { desc = 'End the coauthor round without waiting' })
   vim.keymap.set('n', '<leader>tc', function() M.comment('line') end,
     { desc = 'Coauthor: comment on line, or reply in a thread' })
   vim.keymap.set('x', '<leader>tc', function() M.comment('visual') end, { desc = 'Coauthor: comment on selection' })
@@ -643,6 +955,9 @@ function M.setup()
     if not docs[buf] then return notify('off for this buffer (:Coauthor)') end
     M.resolve(buf, M.thread_at(buf, api.nvim_win_get_cursor(0)[1]))
   end, { desc = 'Coauthor: resolve thread' })
+  vim.keymap.set('n', '<leader>ts', function() M.submit() end,
+    { desc = 'Coauthor: submit threads (save, lock, yank prompt)' })
+  vim.keymap.set('n', '<leader>td', M.diff, { desc = 'Coauthor: diff against the review baseline' })
   vim.keymap.set('n', ']t', function() M.jump(1) end, { desc = 'Coauthor: next thread (else :tnext)' })
   vim.keymap.set('n', '[t', function() M.jump(-1) end, { desc = 'Coauthor: previous thread (else :tprevious)' })
 end

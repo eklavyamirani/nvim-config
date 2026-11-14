@@ -433,7 +433,20 @@ already has threads, are on automatically. Design: `docs/coauthor.md`.
 | `<leader>tt` | Side split with the cursor's thread; it follows the cursor |
 | `<leader>tl` | Threads to quickfix: orphans first, then by line |
 | `<leader>tx` | Resolve the thread under the cursor |
+| `<leader>ts` | Submit: save, lock the buffer, yank the agent prompt |
+| `<leader>td` | Diff against the copy taken at submit (again to close) |
+| `:CoauthorDone` | End the round when the agent forgot `coauthor done` |
+| `:CoauthorCancel` | End the round without waiting |
 | `:Coauthor` | Turn threads on or off for this buffer |
+
+**A round:** `<leader>ts` saves the document, locks it (read-only, not
+modifiable) and yanks a prompt like ``Address the open comment threads on
+@docs/plan.md: run `coauthor list docs/plan.md` and follow its instructions.``
+Paste it into Copilot CLI or Claude Code. Agent replies appear as they land and
+you can keep commenting; the document reloads only when the agent runs
+`coauthor done` (or you run `:CoauthorDone`). Then one notification sums up the
+round, e.g. `3 replies · 1 edit · 1 orphaned`, and `<leader>td` shows what changed.
+The reload is a single `u`.
 
 In the side split: `<CR>` jumps to the thread in the document, `x` resolves it,
 `a` accepts a drifted anchor (save first), `q` closes. Its pinned **Needs anchor**

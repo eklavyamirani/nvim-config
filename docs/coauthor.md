@@ -454,6 +454,38 @@ Small details decided during implementation, within the design above.
 - **Float (experimental):** `relative = 'cursor'`, at most 80 columns, `'winborder'`
   or a single border; closed on `CursorMoved`, `InsertEnter` or `BufLeave`.
 
+### Submit, rounds and change detection (#26)
+
+- **Submit** refuses when no thread is awaiting ai or a round is already open.
+  `:w` runs first; its `BufWritePost` sync is queued ahead of `round open`, so
+  the order is the design's. The baseline is a byte copy of the saved file at
+  `stdpath('state')/coauthor-baselines/<sha256(path)[1..16]>-<name>`, so the
+  diff works after a restart.
+- **Prompt:** one line, with the path relative to Neovim's cwd, yanked to `+`
+  when a clipboard provider exists, else `"`:
+  ```
+  Address the open comment threads on @docs/rollout.md: run `coauthor list docs/rollout.md` and follow its instructions.
+  ```
+- **Lock:** `nomodifiable`, `readonly` and a local `noautoread`. 'autoread' (on
+  by default in Neovim) would reload an unmodified buffer on `:checktime`
+  without consulting `FileChangedShell`; with it off, one permanent
+  `FileChangedShell` handler sets `v:fcs_choice` to `''` for a buffer in a round
+  and to `ask` (Neovim's usual prompt) for everything else.
+- **Watching:** one `fs_event` per directory (resolved with `fs_realpath`, as
+  FSEvents reports real paths), shared by every document in it; callbacks are
+  filtered by basename (an event without a name counts for all) and debounced
+  100 ms. A threads-file event is ignored when the file's SHA-256 equals the
+  last snapshot's `revision`. A document event outside a round runs
+  `:checktime` for that buffer with a temporary local `autoread`, so an
+  unmodified buffer reloads silently and a modified one gets W12.
+- **Round end:** any snapshot with `round: done` while the buffer is locked ends
+  the round (agent's `done`, seen through the watch; `:CoauthorDone`).
+  `:CoauthorCancel` ends it without running `done`, leaving `round: open` in the
+  file. Either way: unlock, `:edit` (window views restored), anchors rebuilt
+  from the CLI, then one notification
+  `round done · N replies · N edits · N orphaned`, counting AI messages added
+  since submit. `:Coauthor` will not turn a buffer off mid-round.
+
 ## Findings from the mockups
 
 ### Second mockup (final design, recording above)
