@@ -430,6 +430,30 @@ Small details decided during implementation, within the design above.
 - **`]t` / `[t`:** wrap when `'wrapscan'` is set; in buffers without coauthor
   they run `:tnext` / `:tprevious`, Neovim's default for these keys.
 
+### Views (#25)
+
+- **Orphan, in Neovim:** an unresolved thread without a live extmark (the CLI
+  found no text for it, or the user deleted it). This is what the Needs anchor
+  section, quickfix and statusline count; mid-round, the CLI's verdict against a
+  half-edited file never removes a mark.
+- **Side split:** a scratch `coauthor://threads` buffer (`markdown`, so it renders
+  like the document) in a `botright` vertical split, a third of the width, with
+  focus left in the document. It follows the cursor's thread on `CursorMoved`
+  and `BufEnter` in coauthor buffers, and redraws on every snapshot. Needs
+  anchor entries are `- tN · was line N · status` with the first anchor line as
+  `was:`. Drifted threads show `· drifted` in their header.
+- **`a` (accept drift)** runs `coauthor move` to the mark's current lines, so it
+  needs a saved buffer and no open round; otherwise it says why and does
+  nothing.
+- **Quickfix:** `[orphan] tN · was line N: <first anchor line>` (the design's
+  spelling), then the other unresolved threads by line as
+  `tN · <status> · <author>: <first line of the last message>`.
+- **Statusline:** a lualine component in `lualine_x`, shown in coauthor buffers
+  only, with lualine's own colours. Buckets are exclusive (an orphan counts only
+  as an orphan) and zero counts are left out.
+- **Float (experimental):** `relative = 'cursor'`, at most 80 columns, `'winborder'`
+  or a single border; closed on `CursorMoved`, `InsertEnter` or `BufLeave`.
+
 ## Findings from the mockups
 
 ### Second mockup (final design, recording above)

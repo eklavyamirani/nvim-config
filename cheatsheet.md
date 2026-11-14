@@ -430,7 +430,22 @@ already has threads, are on automatically. Design: `docs/coauthor.md`.
 | --- | --- |
 | `<leader>tc` | Comment on the line or selection (new thread); inside a thread, reply to it |
 | `]t` / `[t` | Next / previous thread (`:tnext` / `:tprevious` where coauthor is off) |
+| `<leader>tt` | Side split with the cursor's thread; it follows the cursor |
+| `<leader>tl` | Threads to quickfix: orphans first, then by line |
+| `<leader>tx` | Resolve the thread under the cursor |
 | `:Coauthor` | Turn threads on or off for this buffer |
+
+In the side split: `<CR>` jumps to the thread in the document, `x` resolves it,
+`a` accepts a drifted anchor (save first), `q` closes. Its pinned **Needs anchor**
+section lists threads whose text is gone, as `was line N` with the old text.
+The statusline shows `awaiting me N · awaiting ai N · orphan N` in coauthor
+buffers.
+
+### Experimental
+
+| Key | Action |
+| --- | --- |
+| `<leader>tf` | The thread under the cursor in a float; moving the cursor closes it |
 
 A commented line's number is coloured by whose turn it is: peach awaiting you,
 blue awaiting the agent. A dim `t1` at the end of the first line names the

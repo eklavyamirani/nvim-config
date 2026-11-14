@@ -77,7 +77,11 @@
       "<leader>aQ": "Review: ask a follow-up with read tools",
       "<leader>tc": "Coauthor: comment on line, or reply in a thread",
       "]t": "Coauthor: next thread (else :tnext)",
-      "[t": "Coauthor: previous thread (else :tprevious)"
+      "[t": "Coauthor: previous thread (else :tprevious)",
+      "<leader>tt": "Coauthor: open thread in side split",
+      "<leader>tf": "Coauthor: open thread in float (experimental)",
+      "<leader>tl": "Coauthor: threads to quickfix",
+      "<leader>tx": "Coauthor: resolve thread"
     },
     "x": {
       "<leader>ay": "AI: yank selection to clipboard",
@@ -94,16 +98,19 @@
       "gd": "Diffview LSP: definition at this commit",
       "K": "Diffview LSP: hover at this commit",
       "grr": "Diffview LSP: references at this commit",
-      "<C-t>": "Diffview LSP: return from source jump"
+      "<C-t>": "Diffview LSP: return from source jump",
+      "x": "Coauthor: resolve thread",
+      "a": "Coauthor: accept drifted anchor"
     }
   },
-  "autocmd_events": ["LspAttach", "VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User", "ColorScheme", "BufWipeout"],
+  "autocmd_events": ["LspAttach", "VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User", "ColorScheme", "BufWipeout", "CursorMoved", "InsertEnter"],
   "behaviors": {
     "tests/csharp_lsp.lua": "Native C# activation, solution/project roots, protocol language and parser mapping",
     "tests/lsp_servers.lua": "Installed language-server executables per platform (Windows .exe/Scripts) and C# project-root cwd",
     "tests/treesitter.lua": "Parser/filetype mapping, missing-parser guard, and Treesitter start",
     "tests/config.lua": "Startup, options, mappings, plugins, commands, autocmds, and AI clipboard formatting",
     "tests/coauthor.lua": "Coauthor comments and replies, buffer anchor text, line-number marks, sync on :w, navigation, toggle, auto-enable and missing binary",
+    "tests/coauthor_views.lua": "Coauthor side split with and without orphans, its keys, float, quickfix order, statusline and resolve",
     "tests/review_context.lua": "Explanation panes, exact selections, private notes, request ordering, and recovery",
     "tests/review_route.lua": "Committed-diff ordering, marks, persistence, migration, and assistant routing",
     "tests/review_tree.lua": "Tree/list rendering, nested marks, folding, and navigation",

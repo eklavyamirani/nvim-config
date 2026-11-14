@@ -53,7 +53,10 @@ vim.api.nvim_create_user_command('Notifications', notification_history, { desc =
 vim.keymap.set('n', '<leader>nh', notification_history, { desc = 'Notification history' })
 setup('nvim-autopairs')
 setup('smear_cursor')
-setup('lualine')
+setup('lualine', {
+  -- Coauthor thread counts, only in coauthor buffers; the rest are lualine's defaults.
+  sections = { lualine_x = { require('config.coauthor').lualine, 'encoding', 'fileformat', 'filetype' } },
+})
 setup('which-key')
 setup('colorizer')
 setup('render-markdown', {
