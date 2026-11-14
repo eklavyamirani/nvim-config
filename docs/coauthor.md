@@ -310,7 +310,7 @@ coauthor uses the free `<leader>t` (threads) prefix.
 | `<leader>tc` | comment on line/selection (new thread, or reply inside one) |
 | `<leader>tt` | open thread under cursor (side split) |
 | `<leader>tf` | open thread under cursor (float) *(experimental)* |
-| `]t` / `[t` | next / previous thread |
+| `]n` / `[n` | next / previous thread (buffer-local; was `]t` / `[t`, see #24 notes) |
 | `<leader>tl` | threads → quickfix |
 | `<leader>ts` | `:w`, review baseline, open round, yank submit prompt |
 | `<leader>tS` | headless submit *(experimental)* |
@@ -428,8 +428,12 @@ Small details decided during implementation, within the design above.
 - **New comment:** a provisional extmark follows the selection while the prompt
   (`vim.ui.input`, one line) and the CLI call are pending; anchor text is passed
   as `--anchor-text=…` and the message after `--`, so leading dashes are safe.
-- **`]t` / `[t`:** wrap when `'wrapscan'` is set; in buffers without coauthor
-  they run `:tnext` / `:tprevious`, Neovim's default for these keys.
+- **`]n` / `[n`** (changed from the design's `]t` / `[t`): Neovim 0.11+ maps
+  `]t` / `[t` to `:tnext` / `:tprevious`, and coauthor turns on for any file
+  with threads, code included, where tag navigation matters. So navigation uses
+  a pair that neither Neovim's defaults, Vim's built-in `]`/`[` commands nor
+  this config uses, mapped buffer-local while coauthor is on (and removed by
+  `:Coauthor` off). Wraps when `'wrapscan'` is set.
 
 ### Views (#25)
 

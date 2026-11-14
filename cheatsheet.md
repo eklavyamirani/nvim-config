@@ -429,7 +429,7 @@ already has threads, are on automatically. Design: `docs/coauthor.md`.
 | Key / Command | Action |
 | --- | --- |
 | `<leader>tc` | Comment on the line or selection (new thread); inside a thread, reply to it |
-| `]t` / `[t` | Next / previous thread (`:tnext` / `:tprevious` where coauthor is off) |
+| `]n` / `[n` | Next / previous thread (only in buffers where coauthor is on) |
 | `<leader>tt` | Side split with the cursor's thread; it follows the cursor |
 | `<leader>tl` | Threads to quickfix: orphans first, then by line |
 | `<leader>tx` | Resolve the thread under the cursor |

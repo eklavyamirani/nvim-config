@@ -173,6 +173,17 @@ function M.refresh(buf, opts)
   end)
 end
 
+-- Thread navigation exists only where coauthor is on, on keys Neovim leaves
+-- free: ]t / [t are its tag navigation (:tnext / :tprevious).
+local function map_navigation(buf)
+  vim.keymap.set('n', ']n', function() M.jump(1) end, { buffer = buf, desc = 'Coauthor: next thread' })
+  vim.keymap.set('n', '[n', function() M.jump(-1) end, { buffer = buf, desc = 'Coauthor: previous thread' })
+end
+
+local function unmap_navigation(buf)
+  for _, lhs in ipairs({ ']n', '[n' }) do pcall(vim.keymap.del, 'n', lhs, { buffer = buf }) end
+end
+
 function M.enable(buf, opts)
   buf = (buf == nil or buf == 0) and api.nvim_get_current_buf() or buf
   if docs[buf] then return true end
@@ -182,6 +193,7 @@ function M.enable(buf, opts)
   end
   if not available() then return false end
   docs[buf] = { path = api.nvim_buf_get_name(buf), threads = {}, by_id = {}, marks = {} }
+  map_navigation(buf)
   M.refresh(buf, { rebuild = true })
   return true
 end
@@ -189,7 +201,10 @@ end
 function M.disable(buf)
   buf = (buf == nil or buf == 0) and api.nvim_get_current_buf() or buf
   if docs[buf] and docs[buf].round then return notify('end the round first (:CoauthorDone or :CoauthorCancel)') end
-  if api.nvim_buf_is_valid(buf) then api.nvim_buf_clear_namespace(buf, ns, 0, -1) end
+  if api.nvim_buf_is_valid(buf) then
+    api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+    unmap_navigation(buf)
+  end
   M.unwatch(buf)
   docs[buf] = nil
   changed(buf)
@@ -295,16 +310,11 @@ function M.comment(mode)
   end)
 end
 
--- `]t` / `[t`: the next or previous anchor start, wrapping like 'wrapscan'.
--- Elsewhere they keep Neovim's default meaning, :tnext / :tprevious.
+-- `]n` / `[n`: the next or previous anchor start, wrapping like 'wrapscan'.
 function M.jump(direction)
   local buf = api.nvim_get_current_buf()
   local doc = docs[buf]
-  if not doc then
-    local ok, err = pcall(vim.cmd, vim.v.count1 .. (direction > 0 and 'tnext' or 'tprevious'))
-    if not ok then api.nvim_echo({ { tostring(err):match('E%d+:.*') or tostring(err), 'ErrorMsg' } }, true, {}) end
-    return
-  end
+  if not doc then return notify('off for this buffer (:Coauthor)') end
   local starts = {}
   for _, mark in pairs(doc.marks) do
     local first = mark_range(buf, mark)
@@ -1165,8 +1175,6 @@ function M.setup()
     { desc = 'Coauthor: submit and run the agent headless (experimental)' })
   vim.keymap.set('n', '<leader>td', M.diff, { desc = 'Coauthor: diff against the review baseline' })
   vim.keymap.set('x', '<leader>tr', M.reanchor_selection, { desc = 'Coauthor: re-anchor a thread to the selection' })
-  vim.keymap.set('n', ']t', function() M.jump(1) end, { desc = 'Coauthor: next thread (else :tnext)' })
-  vim.keymap.set('n', '[t', function() M.jump(-1) end, { desc = 'Coauthor: previous thread (else :tprevious)' })
 end
 
 return M
