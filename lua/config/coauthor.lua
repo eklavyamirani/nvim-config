@@ -321,6 +321,266 @@ function M.jump(direction)
   if target then api.nvim_win_set_cursor(0, { target, 0 }) end
 end
 
+-- ---------------------------------------------------------------- views
+
+-- Unresolved threads without a live anchor in the buffer: the CLI found no
+-- text for them, or the user deleted it.
+function M.orphans(buf)
+  local doc, list = docs[buf], {}
+  if not doc then return list end
+  for _, thread in ipairs(doc.threads) do
+    if thread.status ~= 'resolved' and not (doc.marks[thread.id] and mark_range(buf, doc.marks[thread.id])) then
+      table.insert(list, thread)
+    end
+  end
+  return list
+end
+
+local function first_line(lines) return (lines and lines[1]) or '' end
+
+local function last_message(thread)
+  local message = thread.messages[#thread.messages]
+  return message and (message.author .. ': ' .. vim.split(message.text, '\n', { plain = true })[1]) or ''
+end
+
+local status_label = { awaiting_me = 'awaiting me', awaiting_ai = 'awaiting ai', resolved = 'resolved' }
+
+-- Markdown for one thread. `range` is where its anchor is in the buffer now.
+local function thread_lines(thread, range)
+  local place = range and ('lines %d-%d'):format(range[1], range[2]) or ('was line %d'):format(thread.lines[1])
+  local header = ('## %s · %s · %s'):format(thread.id, place, status_label[thread.status])
+  if range and thread.state == 'drifted' then header = header .. ' · drifted' end
+  local lines = { header }
+  for _, line in ipairs(thread.anchor) do table.insert(lines, line == '' and '>' or '> ' .. line) end
+  for _, line in ipairs(thread.was or {}) do table.insert(lines, 'was: ' .. line) end
+  for _, message in ipairs(thread.messages) do
+    table.insert(lines, '')
+    local text = vim.split(message.text, '\n', { plain = true })
+    text[1] = ('**%s:** %s'):format(message.author, text[1])
+    vim.list_extend(lines, text)
+  end
+  return lines
+end
+
+local function range_of(buf, thread)
+  local doc = docs[buf]
+  local mark = doc and doc.marks[thread.id]
+  if not mark then return nil end
+  local first, last = mark_range(buf, mark)
+  return first and { first, last } or nil
+end
+
+-- The side split's text for the thread at the cursor (or `thread`), with the
+-- pinned Needs anchor section on top. Returns lines and a line -> thread id map.
+function M.render(buf, row, thread)
+  local lines, ids = {}, {}
+  local orphans = M.orphans(buf)
+  if #orphans > 0 then
+    vim.list_extend(lines, { '# Needs anchor', '' })
+    for _, orphan in ipairs(orphans) do
+      table.insert(lines, ('- %s · was line %d · %s'):format(orphan.id, orphan.lines[1], status_label[orphan.status]))
+      ids[#lines] = orphan.id
+      table.insert(lines, '  was: ' .. first_line(orphan.anchor))
+      ids[#lines] = orphan.id
+    end
+    table.insert(lines, '')
+  end
+  thread = thread or (row and M.thread_at(buf, row))
+  if thread then
+    local start = #lines + 1
+    vim.list_extend(lines, thread_lines(thread, range_of(buf, thread)))
+    for i = start, #lines do ids[i] = thread.id end
+  else
+    table.insert(lines, 'No thread on this line. <leader>tc comments on it.')
+  end
+  return lines, ids
+end
+
+local split = {}
+
+local function valid_win(win) return win and api.nvim_win_is_valid(win) end
+
+local function split_thread()
+  if not (split.buf and api.nvim_buf_is_valid(split.buf)) then return end
+  local row = valid_win(split.win) and api.nvim_win_get_buf(split.win) == split.buf
+    and api.nvim_win_get_cursor(split.win)[1]
+  local id = row and split.ids[row]
+  local doc = docs[split.doc]
+  return doc and id and doc.by_id[id], split.doc
+end
+
+local function draw_split()
+  if not valid_win(split.win) or not docs[split.doc] then return end
+  local doc_win = vim.fn.bufwinid(split.doc)
+  local row = doc_win ~= -1 and api.nvim_win_get_cursor(doc_win)[1] or nil
+  local lines, ids = M.render(split.doc, row, split.pinned and docs[split.doc].by_id[split.pinned])
+  split.ids = ids
+  vim.bo[split.buf].modifiable = true
+  api.nvim_buf_set_lines(split.buf, 0, -1, false, lines)
+  vim.bo[split.buf].modifiable = false
+end
+
+function M.resolve(buf, thread)
+  if not thread then return notify('no thread here') end
+  M.run({ 'resolve', docs[buf].path, thread.id }, function(snapshot) apply(buf, snapshot) end)
+end
+
+-- Accepting a drift re-anchors to where the mark is now, which `coauthor move`
+-- reads from the file: the buffer must be saved and outside a round.
+function M.accept(buf, thread)
+  local range = thread and range_of(buf, thread)
+  if not range or thread.state ~= 'drifted' then return notify('no drifted thread here') end
+  if docs[buf].locked then return notify('accept drifts after the round ends') end
+  if vim.bo[buf].modified then return notify('save the document first, then accept') end
+  M.run({ 'move', docs[buf].path, thread.id, range[1] .. '-' .. range[2] }, function(snapshot) apply(buf, snapshot) end)
+end
+
+local function jump_to(buf, thread)
+  if not thread then return end
+  local range = range_of(buf, thread)
+  local line = range and range[1] or math.min(thread.lines[1], api.nvim_buf_line_count(buf))
+  local win = vim.fn.bufwinid(buf)
+  if win == -1 then
+    vim.cmd('wincmd p')
+    api.nvim_win_set_buf(0, buf)
+    win = api.nvim_get_current_win()
+  end
+  api.nvim_set_current_win(win)
+  api.nvim_win_set_cursor(win, { line, 0 })
+end
+
+local split_keys = {}
+
+function M.open_split()
+  local buf = api.nvim_get_current_buf()
+  if buf == split.buf then return end
+  if not M.enable(buf) then return end
+  split.doc, split.pinned = buf, nil
+  if not (split.buf and api.nvim_buf_is_valid(split.buf)) then
+    split.buf = api.nvim_create_buf(false, true)
+    api.nvim_buf_set_name(split.buf, 'coauthor://threads')
+    vim.bo[split.buf].filetype = 'markdown'
+    vim.bo[split.buf].modifiable = false
+    for _, key in ipairs(split_keys) do
+      vim.keymap.set('n', key[1], key[2], { buffer = split.buf, desc = key[3] })
+    end
+  end
+  if not valid_win(split.win) then
+    local doc_win = api.nvim_get_current_win()
+    vim.cmd('botright vertical sbuffer ' .. split.buf)
+    split.win = api.nvim_get_current_win()
+    api.nvim_win_set_width(split.win, math.max(40, math.floor(vim.o.columns / 3)))
+    for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', wrap = true,
+      linebreak = true, winfixwidth = true, cursorline = false }) do
+      vim.wo[split.win][option] = value
+    end
+    api.nvim_set_current_win(doc_win)
+  end
+  draw_split()
+end
+
+function M.close_split()
+  if valid_win(split.win) then api.nvim_win_close(split.win, true) end
+  split.win = nil
+end
+
+split_keys = {
+  { '<CR>', function()
+    local thread, buf = split_thread()
+    jump_to(buf, thread)
+  end, 'Coauthor: jump to the thread in the document' },
+  { 'x', function()
+    local thread, buf = split_thread()
+    if buf then M.resolve(buf, thread) end
+  end, 'Coauthor: resolve thread' },
+  { 'a', function()
+    local thread, buf = split_thread()
+    if buf then M.accept(buf, thread) end
+  end, 'Coauthor: accept drifted anchor' },
+  { 'q', M.close_split, 'Coauthor: close threads split' },
+}
+
+local float = {}
+
+-- Experimental: the thread under the cursor in a float, closed on the next move.
+function M.open_float()
+  local buf = api.nvim_get_current_buf()
+  if not M.enable(buf) then return end
+  local thread = M.thread_at(buf, api.nvim_win_get_cursor(0)[1])
+  if not thread then return notify('no thread on this line') end
+  if valid_win(float.win) then api.nvim_win_close(float.win, true) end
+  local lines = thread_lines(thread, range_of(buf, thread))
+  local fbuf = api.nvim_create_buf(false, true)
+  api.nvim_buf_set_lines(fbuf, 0, -1, false, lines)
+  vim.bo[fbuf].filetype = 'markdown'
+  vim.bo[fbuf].modifiable = false
+  local width = math.min(80, vim.o.columns - 4)
+  local height = 0
+  for _, line in ipairs(lines) do height = height + math.max(1, math.ceil(vim.fn.strdisplaywidth(line) / width)) end
+  float.win = api.nvim_open_win(fbuf, false, {
+    relative = 'cursor', row = 1, col = 0, width = width, height = math.min(height, math.floor(vim.o.lines / 2)),
+    style = 'minimal', border = vim.o.winborder ~= '' and vim.o.winborder or 'single',
+  })
+  vim.wo[float.win].wrap, vim.wo[float.win].linebreak = true, true
+  float.doc = buf
+  return float.win
+end
+
+-- Orphans first (at their last-known line), then every other unresolved thread.
+function M.quickfix_items(buf)
+  local doc, items = docs[buf], {}
+  if not doc then return items end
+  local orphaned = {}
+  for _, orphan in ipairs(M.orphans(buf)) do
+    orphaned[orphan.id] = true
+    table.insert(items, { bufnr = buf, lnum = orphan.lines[1],
+      text = ('[orphan] %s · was line %d: %s'):format(orphan.id, orphan.lines[1], first_line(orphan.anchor)) })
+  end
+  local rest = {}
+  for _, thread in ipairs(doc.threads) do
+    local range = range_of(buf, thread)
+    if thread.status ~= 'resolved' and not orphaned[thread.id] and range then
+      table.insert(rest, { bufnr = buf, lnum = range[1], end_lnum = range[2],
+        text = ('%s · %s · %s'):format(thread.id, status_label[thread.status], last_message(thread)) })
+    end
+  end
+  table.sort(rest, function(a, b) return a.lnum < b.lnum end)
+  return vim.list_extend(items, rest)
+end
+
+function M.quickfix()
+  local buf = api.nvim_get_current_buf()
+  if not M.enable(buf) then return end
+  local items = M.quickfix_items(buf)
+  if #items == 0 then return notify('no open threads') end
+  vim.fn.setqflist({}, ' ', { title = 'Coauthor threads', items = items })
+  vim.cmd('copen')
+end
+
+-- Lualine: `awaiting me 2 · awaiting ai 1 · orphan 1`, zero counts left out.
+function M.statusline()
+  local buf = api.nvim_get_current_buf()
+  local doc = docs[buf]
+  if not doc then return '' end
+  -- Exclusive buckets: an orphan counts only as an orphan.
+  local orphaned = {}
+  for _, orphan in ipairs(M.orphans(buf)) do orphaned[orphan.id] = true end
+  local counts = { awaiting_me = 0, awaiting_ai = 0 }
+  for _, thread in ipairs(doc.threads) do
+    if counts[thread.status] and not orphaned[thread.id] then counts[thread.status] = counts[thread.status] + 1 end
+  end
+  local parts = {}
+  if counts.awaiting_me > 0 then table.insert(parts, 'awaiting me ' .. counts.awaiting_me) end
+  if counts.awaiting_ai > 0 then table.insert(parts, 'awaiting ai ' .. counts.awaiting_ai) end
+  if next(orphaned) then table.insert(parts, 'orphan ' .. vim.tbl_count(orphaned)) end
+  return table.concat(parts, ' · ')
+end
+
+M.lualine = {
+  function() return M.statusline() end,
+  cond = function() return M.enabled(0) end,
+}
+
 function M.setup()
   highlights()
   api.nvim_create_autocmd('ColorScheme', { group = group, callback = highlights })
@@ -354,10 +614,35 @@ function M.setup()
     group = group,
     callback = function(event) docs[event.buf] = nil end,
   })
+  -- The side split follows the cursor's thread.
+  api.nvim_create_autocmd({ 'CursorMoved', 'BufEnter' }, {
+    group = group,
+    callback = function(event)
+      if event.buf ~= split.buf and docs[event.buf] and valid_win(split.win) then
+        split.doc, split.pinned = event.buf, nil
+        draw_split()
+      end
+    end,
+  })
+  M.on_change(function(buf) if buf == split.doc then draw_split() end end)
+  api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter', 'BufLeave' }, {
+    group = group,
+    callback = function(event)
+      if event.buf == float.doc and valid_win(float.win) then api.nvim_win_close(float.win, true) end
+    end,
+  })
   api.nvim_create_user_command('Coauthor', M.toggle, { desc = 'Toggle coauthor threads for this buffer' })
   vim.keymap.set('n', '<leader>tc', function() M.comment('line') end,
     { desc = 'Coauthor: comment on line, or reply in a thread' })
   vim.keymap.set('x', '<leader>tc', function() M.comment('visual') end, { desc = 'Coauthor: comment on selection' })
+  vim.keymap.set('n', '<leader>tt', M.open_split, { desc = 'Coauthor: open thread in side split' })
+  vim.keymap.set('n', '<leader>tf', M.open_float, { desc = 'Coauthor: open thread in float (experimental)' })
+  vim.keymap.set('n', '<leader>tl', M.quickfix, { desc = 'Coauthor: threads to quickfix' })
+  vim.keymap.set('n', '<leader>tx', function()
+    local buf = api.nvim_get_current_buf()
+    if not docs[buf] then return notify('off for this buffer (:Coauthor)') end
+    M.resolve(buf, M.thread_at(buf, api.nvim_win_get_cursor(0)[1]))
+  end, { desc = 'Coauthor: resolve thread' })
   vim.keymap.set('n', ']t', function() M.jump(1) end, { desc = 'Coauthor: next thread (else :tnext)' })
   vim.keymap.set('n', '[t', function() M.jump(-1) end, { desc = 'Coauthor: previous thread (else :tprevious)' })
 end

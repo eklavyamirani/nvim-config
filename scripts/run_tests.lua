@@ -8,6 +8,7 @@ local suites = {
   -- Builds the CLI that the Neovim coauthor tests below drive.
   { 'coauthor', { 'cargo', 'test', '--manifest-path', 'coauthor/Cargo.toml', '--locked' } },
   { 'coauthor', 'NONE', 'tests/coauthor.lua' },
+  { 'coauthor', 'NONE', 'tests/coauthor_views.lua' },
   { 'config', 'init.lua', 'tests/config.lua' },
   { 'config', 'init.lua', 'tests/csharp_lsp.lua' },
   { 'config', 'init.lua', 'tests/treesitter.lua' },
