@@ -433,6 +433,7 @@ already has threads, are on automatically. Design: `docs/coauthor.md`.
 | `<leader>tt` | Side split with the cursor's thread; it follows the cursor |
 | `<leader>tl` | Threads to quickfix: orphans first, then by line |
 | `<leader>tx` | Resolve the thread under the cursor |
+| `<leader>tr` (visual) | Re-anchor a thread to the selection: pick it (orphans first, then drifted, then the rest) |
 | `<leader>ts` | Submit: save, lock the buffer, yank the agent prompt |
 | `<leader>td` | Diff against the copy taken at submit (again to close) |
 | `:CoauthorDone` | End the round when the agent forgot `coauthor done` |
@@ -449,7 +450,11 @@ round, e.g. `3 replies · 1 edit · 1 orphaned`, and `<leader>td` shows what cha
 The reload is a single `u`.
 
 In the side split: `<CR>` jumps to the thread in the document, `x` resolves it,
-`a` accepts a drifted anchor (save first), `q` closes. Its pinned **Needs anchor**
+`a` accepts a drifted anchor (save first), `r` re-anchors it, `q` closes. `r`
+selects a suggested range in the document (where the agent's last reply says
+it edited, else the thread's lines); adjust the selection if needed, then `<CR>`
+anchors the thread there, or `<Esc>` cancels. A re-anchor saves the document
+and keeps the old text as `was:` until the thread is resolved. Its pinned **Needs anchor**
 section lists threads whose text is gone, as `was line N` with the old text.
 The statusline shows `awaiting me N · awaiting ai N · orphan N` in coauthor
 buffers.

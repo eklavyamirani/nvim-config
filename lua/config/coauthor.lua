@@ -504,6 +504,10 @@ split_keys = {
     local thread, buf = split_thread()
     if buf then M.accept(buf, thread) end
   end, 'Coauthor: accept drifted anchor' },
+  { 'r', function()
+    local thread, buf = split_thread()
+    if buf then M.start_reanchor(buf, thread) end
+  end, 'Coauthor: re-anchor thread' },
   { 'q', M.close_split, 'Coauthor: close threads split' },
 }
 
@@ -587,6 +591,136 @@ M.lualine = {
   function() return M.statusline() end,
   cond = function() return M.enabled(0) end,
 }
+
+-- ---------------------------------------------------------------- re-anchoring
+
+-- Threads to offer for a re-anchor: orphaned, then drifted, then the rest.
+function M.reanchor_candidates(buf)
+  local doc = docs[buf]
+  if not doc then return {} end
+  local groups = { {}, {}, {} }
+  local orphaned = {}
+  for _, orphan in ipairs(M.orphans(buf)) do orphaned[orphan.id] = true end
+  for _, thread in ipairs(doc.threads) do
+    if thread.status ~= 'resolved' then
+      local range = range_of(buf, thread)
+      local item = { thread = thread }
+      if orphaned[thread.id] then
+        item.group, item.text = 1, ('%s · orphaned · was line %d: %s'):format(thread.id, thread.lines[1],
+          first_line(thread.anchor))
+      else
+        local drifted = thread.state == 'drifted'
+        item.group = drifted and 2 or 3
+        item.text = ('%s · %s · lines %d-%d: %s'):format(thread.id, drifted and 'drifted' or status_label[thread.status],
+          range[1], range[2], first_line(thread.anchor))
+      end
+      table.insert(groups[item.group], item)
+    end
+  end
+  local items = {}
+  for _, list in ipairs(groups) do vim.list_extend(items, list) end
+  return items
+end
+
+-- fzf-lua when it is loaded, vim.ui.select otherwise.
+function M.pick(items, prompt, on_choice)
+  local ok, fzf = pcall(require, 'fzf-lua')
+  if ok and vim.fn.executable('fzf') == 1 then
+    local by_text = {}
+    for _, item in ipairs(items) do by_text[item.text] = item end
+    fzf.fzf_exec(vim.tbl_map(function(item) return item.text end, items), {
+      prompt = prompt .. '> ',
+      actions = { ['default'] = function(selected) on_choice(selected and by_text[selected[1]]) end },
+    })
+  else
+    vim.ui.select(items, { prompt = prompt, format_item = function(item) return item.text end }, on_choice)
+  end
+end
+
+-- Re-anchors `thread` to lines `first`-`last` (saved immediately: `coauthor
+-- move` takes the anchor text from the file, so unsaved edits are written first).
+local function move(buf, thread, first, last)
+  local doc = docs[buf]
+  if doc.round then return notify('re-anchor after the round ends') end
+  if vim.bo[buf].modified then
+    local ok, err = pcall(api.nvim_buf_call, buf, function() vim.cmd('silent write') end)
+    if not ok then return notify(tostring(err):match('E%d+:.*') or tostring(err), vim.log.levels.ERROR) end
+  end
+  M.run({ 'move', doc.path, thread.id, first .. '-' .. last }, function(snapshot)
+    apply(buf, snapshot, { place = { [thread.id] = { first, last } } })
+    notify(('%s anchored to lines %d-%d'):format(thread.id, first, last))
+  end)
+end
+
+-- Visual `<leader>tr`: pick the thread to anchor to the selection.
+function M.reanchor_selection()
+  local buf = api.nvim_get_current_buf()
+  local first, last = selection()
+  local doc = docs[buf]
+  if not doc then return notify('off for this buffer (:Coauthor)') end
+  if doc.round then return notify('re-anchor after the round ends') end
+  local items = M.reanchor_candidates(buf)
+  if #items == 0 then return notify('no open threads') end
+  M.pick(items, ('Anchor to lines %d-%d'):format(first, last), function(item)
+    if item then move(buf, item.thread, first, last) end
+  end)
+end
+
+-- The range to suggest: the last AI reply's `{edited L-L}` (agents often say
+-- where the text went even when they forget `coauthor move`), else the
+-- current or last-known lines.
+function M.suggestion(buf, thread)
+  for i = #thread.messages, 1, -1 do
+    local message = thread.messages[i]
+    if message.author == 'ai' then
+      if message.edited and message.edited[1] then
+        local range = message.edited[1]
+        return math.min(range[1], api.nvim_buf_line_count(buf)), math.min(range[2], api.nvim_buf_line_count(buf))
+      end
+      break
+    end
+  end
+  local range = range_of(buf, thread)
+  if range then return range[1], range[2] end
+  local line = math.min(thread.lines[1], api.nvim_buf_line_count(buf))
+  return line, line
+end
+
+-- Side split `r`: select the suggestion in the document; `<CR>` confirms
+-- (after adjusting the selection, if needed), leaving Visual mode cancels.
+function M.start_reanchor(buf, thread)
+  local doc = docs[buf]
+  if not (doc and thread) then return notify('no thread here') end
+  if doc.round then return notify('re-anchor after the round ends') end
+  local first, last = M.suggestion(buf, thread)
+  local win = vim.fn.bufwinid(buf)
+  if win == -1 then
+    vim.cmd('wincmd p')
+    api.nvim_win_set_buf(0, buf)
+    win = api.nvim_get_current_win()
+  end
+  api.nvim_set_current_win(win)
+  doc.reanchoring = thread.id
+  vim.keymap.set('x', '<CR>', function()
+    -- Cleared before leaving Visual mode, which would otherwise read as a cancel.
+    local pending = doc.reanchoring and doc.by_id[doc.reanchoring]
+    doc.reanchoring = nil
+    pcall(vim.keymap.del, 'x', '<CR>', { buffer = buf })
+    local a, b = selection()
+    if pending then move(buf, pending, a, b) end
+  end, { buffer = buf, desc = 'Coauthor: anchor the thread here' })
+  vim.cmd(('normal! %dGV%dG'):format(first, last))
+  notify(('%s: adjust the selection, <CR> anchors it, <Esc> cancels'):format(thread.id))
+end
+
+-- Leaving Visual mode without <CR> cancels a pending re-anchor.
+local function reanchor_mode_changed(event)
+  local doc = docs[event.buf]
+  if not (doc and doc.reanchoring) or vim.v.event.new_mode:match('^[vV\22]') then return end
+  doc.reanchoring = nil
+  pcall(vim.keymap.del, 'x', '<CR>', { buffer = event.buf })
+  notify('re-anchor cancelled')
+end
 
 -- ---------------------------------------------------------------- change detection
 
@@ -943,6 +1077,7 @@ function M.setup()
       vim.v.fcs_choice = doc and doc.round and '' or 'ask'
     end,
   })
+  api.nvim_create_autocmd('ModeChanged', { group = group, callback = reanchor_mode_changed })
   -- A missed file event is caught when Neovim regains focus.
   api.nvim_create_autocmd('FocusGained', { group = group, command = 'silent! checktime' })
   api.nvim_create_user_command('Coauthor', M.toggle, { desc = 'Toggle coauthor threads for this buffer' })
@@ -962,6 +1097,7 @@ function M.setup()
   vim.keymap.set('n', '<leader>ts', function() M.submit() end,
     { desc = 'Coauthor: submit threads (save, lock, yank prompt)' })
   vim.keymap.set('n', '<leader>td', M.diff, { desc = 'Coauthor: diff against the review baseline' })
+  vim.keymap.set('x', '<leader>tr', M.reanchor_selection, { desc = 'Coauthor: re-anchor a thread to the selection' })
   vim.keymap.set('n', ']t', function() M.jump(1) end, { desc = 'Coauthor: next thread (else :tnext)' })
   vim.keymap.set('n', '[t', function() M.jump(-1) end, { desc = 'Coauthor: previous thread (else :tprevious)' })
 end
