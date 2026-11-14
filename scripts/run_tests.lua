@@ -9,6 +9,7 @@ local suites = {
   { 'coauthor', { 'cargo', 'test', '--manifest-path', 'coauthor/Cargo.toml', '--locked' } },
   { 'coauthor', 'NONE', 'tests/coauthor.lua' },
   { 'coauthor', 'NONE', 'tests/coauthor_views.lua' },
+  { 'coauthor', 'NONE', 'tests/coauthor_rounds.lua' },
   { 'config', 'init.lua', 'tests/config.lua' },
   { 'config', 'init.lua', 'tests/csharp_lsp.lua' },
   { 'config', 'init.lua', 'tests/treesitter.lua' },
