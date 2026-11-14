@@ -48,10 +48,8 @@ anchor (`@path:start-end` + text).
     longer exists.
   - Each worktree has its own threads (different absolute paths).
   - `coauthor path DOC` prints the file, for inspection.
-- **Risk to verify:** an agent whose shell is sandboxed to the project may be
-  unable to write outside it. Headless submit configures its own permissions;
-  the interactive CLI tab may need `coauthor` allowed to write to the state
-  directory.
+- A sandboxed agent shell may be unable to write outside the project; see
+  The agent's permissions.
 
 ### Threads file format
 
@@ -139,9 +137,19 @@ Agent rules printed by `coauthor list`:
 ### The agent's permissions
 
 The agent needs shell access to `coauthor` only. Headless submit grants Edit on
-the document plus that one command. The exact allowlist syntax for running
-only `coauthor` in Claude Code and Copilot CLI is to be verified at
-implementation.
+the document plus that one command:
+
+| Agent | Allow only `coauthor` |
+|---|---|
+| Claude Code | `--allowedTools "Bash(coauthor *)"` (or a `permissions.allow` entry). A compound command such as `coauthor … && rm …` still prompts: every subcommand must match. |
+| Copilot CLI | `--allow-tool 'shell(coauthor:*)'` |
+
+Sandboxing: Claude Code's sandbox is off by default. When it is on, sandboxed
+commands may write only to the working directory, a temp directory and added
+directories, so the state directory needs
+`sandbox.filesystem.allowWrite: ["~/.local/state/coauthor"]`, and on Linux the
+directory must already exist (`coauthor` creates it on first run from Neovim).
+Copilot CLI's sandboxing behaviour is unverified.
 
 ### Submit
 
