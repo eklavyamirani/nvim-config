@@ -1,6 +1,6 @@
 -- A stand-in for Copilot CLI / Claude Code in a headless coauthor round:
 -- `nvim -l tests/coauthor_stub_agent.lua MODE DOC COAUTHOR`, run in the
--- document's directory. MODE: done, linger, exit, fail or hang. It uses only the coauthor CLI and file writes, like an
+-- document's directory. MODE: done, linger, exit, fail, hang or e2e. It uses only the coauthor CLI and file writes, like an
 -- agent limited to Edit on the document and `coauthor *` in its shell.
 local mode, doc, coauthor = arg[1], arg[2], arg[3]
 
@@ -22,6 +22,29 @@ end
 
 if mode == 'hang' then
   while true do vim.uv.sleep(200) end
+end
+
+-- The end-to-end round: wait for the test's go-ahead (so it can check the
+-- lock), then exercise every agent-facing command.
+if mode == 'e2e' then
+  for _ = 1, 200 do
+    if vim.uv.fs_stat(doc .. '.go') then break end
+    vim.uv.sleep(100)
+  end
+  local listing = run('list', doc)
+  assert(listing:find('Reply to every thread awaiting ai', 1, true), 'agent rules missing')
+  local state = vim.json.decode(run('--json', 'list', doc, '--awaiting', 'ai'))
+  assert(#state.threads == 3, 'expected three threads awaiting ai')
+  write({ '# Launch plan', '', 'Summary added.', 'Timeline: phase 1 (one week), phase 2 (one week).',
+    'Budget line.', 'Owner: platform team.', 'End.' })
+  -- t1 was rewritten: re-anchor it. t2's text moved and changed, and this
+  -- agent forgets `move` (it becomes an orphan). t3 needs no change.
+  run('move', doc, 't1', '4-4')
+  run('reply', doc, 't1', '--edited', '4', 'Split the timeline into two phases.')
+  run('reply', doc, 't2', '--edited', '6', 'Named the owner.')
+  run('reply', doc, 't3', '--no-edit', 'The budget line is fine as is.')
+  run('done', doc)
+  os.exit(0)
 end
 
 local listing = run('list', doc, '--awaiting', 'ai')

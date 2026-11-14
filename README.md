@@ -43,6 +43,18 @@ Pinned notes supply reusable context. The assistant backend defaults to an
 authenticated Copilot CLI; Claude Code is configurable. See the
 [assistant workflow](cheatsheet.md#ai-cli-bridge-clipboard) for setup and controls.
 
+Coauthor threads let you comment on any document without editing it, hand the
+comments to Copilot CLI or Claude Code in one go, and converse per thread while
+the agent edits the document and replies. `<leader>tc` comments (anchored to the
+buffer's text; line numbers are coloured by whose turn it is), `<leader>ts`
+submits (saves and locks the document, yanks the agent prompt), and the
+document reloads once the agent runs `coauthor done`; `<leader>td` diffs it
+against the copy taken at submit. Threads whose text disappeared are listed for
+re-anchoring. Comments live outside every repository and are written only by
+the `coauthor` CLI (`coauthor/`, installed by `make deps`). See the
+[coauthor keys](cheatsheet.md#coauthor-threads) and the
+[design record](docs/coauthor.md).
+
 Python files use native LSP with BasedPyright. In committed Python Diffview
 panes, `gd`, `K`, and `grr` query a temporary archive of the displayed commit for
 definitions, hover information, and references. Jumps stay in the Diffview tab;
@@ -73,6 +85,11 @@ surrounding lines, pinned notes, and conversation context; they do not execute
 the reviewed code. The support panes handle ordinary files and Diffview, but
 are not adapted to the separate CodeReview plugin's custom buffers.
 
+Coauthor anchors are re-found by exact text only (fuzzy matching is designed
+but off and not implemented), comments are one line (`vim.ui.input`), and
+headless submit (`<leader>tS`) is experimental: whether an agent records its
+replies depends on it running each `coauthor` command on its own.
+
 Commit-specific LSP navigation supports Git commits on either comparison side.
 Index/conflict snapshots and historical installed dependencies are not reproduced.
 Normal Python file buffers retain the native LSP setup.
@@ -84,6 +101,11 @@ under `stdpath('state')/review-context/<repository-id>/`. Find the state root wi
 `:echo stdpath('state')`. Preserve existing saved routes and notes when testing;
 do not copy private conversation contents or review artifacts into repository
 documentation. Tests use temporary repositories for their review data.
+
+Coauthor threads live in `$XDG_STATE_HOME/coauthor/` (`%LOCALAPPDATA%\coauthor\`
+on Windows), one file per document; `coauthor path DOC` prints a document's.
+Review baselines are under `stdpath('state')/coauthor-baselines/`. Tests point
+both at temporary directories.
 
 | File | Responsibility |
 | --- | --- |
@@ -121,12 +143,13 @@ make test NVIM=bin/nvim-config
 
 On Windows, run the same suites with `nvim -l scripts/run_tests.lua`, optionally
 naming suites (`check`, `coauthor`, `config`, `review`, `lsp`). The `coauthor`
-suite runs the CLI's Cargo tests and needs Cargo. CI runs every suite on Linux, macOS,
+suite runs the CLI's Cargo tests, then the Neovim coauthor tests against that
+build, ending with an end-to-end round driven by a stub agent; it needs Cargo. CI runs every suite on Linux, macOS,
 and Windows.
 
-`make test` checks the inventory, loaded editor settings, and review behavior,
-including grouping, selection capture, full follow-up history, persistence,
-errors, navigation, and notification copying. Keep the inventory in sync when
+`make test` checks the inventory, loaded editor settings, coauthor threads, and
+review behavior, including grouping, selection capture, full follow-up history,
+persistence, errors, navigation, and notification copying. Keep the inventory in sync when
 adding mappings or autocmd events. A startup error or unexpected stderr is a
 failure.
 

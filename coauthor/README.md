@@ -44,7 +44,9 @@ document all of them.
 
 ## Commands
 
-Agent-facing (an agent needs nothing else: `list` prints its rules):
+Agent-facing (an agent needs nothing else: `list` prints its rules, these
+commands, and a reminder to run each command on its own, since a headless agent
+may be allowed only commands that start with `coauthor`):
 
 ```sh
 coauthor list DOC [--awaiting ai|me]          # rules, commands, threads; read-only

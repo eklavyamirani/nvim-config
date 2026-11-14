@@ -119,6 +119,7 @@
     "tests/coauthor_rounds.lua": "Coauthor submit, lock, mid-round agent writes, round end by done/:CoauthorDone/:CoauthorCancel, rename-safe watching and review diff",
     "tests/coauthor_reanchor.lua": "Coauthor re-anchoring from a selection and from the side split, the {edited} suggestion, adjusting and cancelling",
     "tests/coauthor_headless.lua": "Coauthor headless submit with a stub agent: success, exit without done, failure, cancel, and agent permissions",
+    "tests/coauthor_e2e.lua": "Coauthor end to end through the real CLI and a stub agent: comment, locked submit, agent commands, round end, orphan re-anchor, diff, reply, next round",
     "tests/review_context.lua": "Explanation panes, exact selections, private notes, request ordering, and recovery",
     "tests/review_route.lua": "Committed-diff ordering, marks, persistence, migration, and assistant routing",
     "tests/review_tree.lua": "Tree/list rendering, nested marks, folding, and navigation",
