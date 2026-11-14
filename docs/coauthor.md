@@ -180,6 +180,20 @@ Experimental keymaps get an `(experimental)` suffix in `desc` so which-key shows
 it, and a cheatsheet section lists them. Initially: headless submit, float view,
 fuzzy drift matching.
 
+### Change detection
+
+- `vim.uv.new_fs_event` on the document's **directory**, filtered to the
+  document and sidecar names. A per-file watch dies when a save replaces the
+  file by rename, which Neovim itself does by default (`'backupcopy'` is
+  `auto`, which renames plain files).
+- Events are debounced, then the document is `:checktime`d and the sidecar
+  re-parsed.
+- An event is ignored when the sidecar content equals what Neovim last wrote,
+  so Neovim's own writes don't trigger a round.
+- `FocusGained` → `:checktime` as a fallback for a missed event.
+- What happens when the document buffer has unsaved edits at that moment is
+  part of Write races.
+
 ## Findings from the mockup
 
 A scripted mockup (real Neovim 0.12 with catppuccin, mini.notify, lualine and
@@ -194,11 +208,13 @@ render-markdown configured like this repo) surfaced these. Open until decided.
    "keep source characters visible" rule. *Decided:* tags use braces,
    `{edited 18}` / `{no edit}`, which markdown leaves alone.
 3. **The file watcher sees Neovim's own sidecar writes.** The mock ignores an
-   event when the file content equals what Neovim last wrote.
+   event when the file content equals what Neovim last wrote. *Decided:* see
+   Change detection.
 4. **Watching the document file breaks on rename-based saves.** A save that
    writes a temp file and renames it (Neovim's `backupcopy=no`, and possibly
    agent edit tools) invalidates a per-file watch handle. The mock needed
-   `backupcopy=yes` and watched only the sidecar.
+   `backupcopy=yes` and watched only the sidecar. *Decided:* watch the
+   directory (see Change detection).
 5. **An orphan's last-known line can be another thread's line.** t3 orphaned at
    line 17, where t2 is anchored, so both quickfix entries point at line 17.
 6. **mini.notify's top-right popup covers the top of the side split**, which is
@@ -210,17 +226,10 @@ fzf-lua.
 
 ## Pinned
 
-### Change detection
-
-Candidate: `vim.uv.new_fs_event` on the document and sidecar, then `:checktime`
-and re-parse. Independent of terminal focus reporting (`FocusGained`, tmux
-`focus-events`). Open: debouncing partial writes, editors that replace files via
-rename (watch handle invalidation), behaviour when the document buffer is
-modified.
-
 ### Write races
 
-Neovim and the agent both write the sidecar. A comment added while the agent is
+Neovim and the agent both write the sidecar, and the agent writes the document
+while it may be open with unsaved edits. A comment added while the agent is
 mid-edit can be clobbered. Candidate: a pending state after submit in which new
 comments queue in memory and flush when the sidecar changes on disk or on
 `:CoauthorDone`. Needs: the end-of-turn signal for the interactive CLI case,
