@@ -85,15 +85,20 @@ assert(vim.deep_equal(state.threads[2].stored, { 6, 7 }), vim.inspect(state.thre
 assert(state.threads[2].anchor[2] == 'Ship it on Friday.')
 assert(state.threads[1].state == 'anchored' and state.threads[2].state == 'anchored')
 
--- 7. ]t / [t move between anchors and wrap.
+-- 7. ]n / [n move between anchors and wrap; they are buffer-local and leave
+-- Neovim's ]t / [t (tag navigation) alone.
+local function press(keys) api.nvim_feedkeys(keys, 'mx', false) end
+assert(vim.fn.maparg(']n', 'n', false, true).buffer == 1 and vim.fn.maparg('[n', 'n', false, true).buffer == 1)
+assert(vim.fn.maparg(']t', 'n', false, true).desc == ':tnext', 'coauthor took over ]t')
+assert(vim.fn.maparg('[t', 'n', false, true).desc == ':tprevious', 'coauthor took over [t')
 api.nvim_win_set_cursor(0, { 1, 0 })
-coauthor.jump(1)
+press(']n')
 assert(api.nvim_win_get_cursor(0)[1] == 5)
-coauthor.jump(1)
+press(']n')
 assert(api.nvim_win_get_cursor(0)[1] == 6)
-coauthor.jump(1)
+press(']n')
 assert(api.nvim_win_get_cursor(0)[1] == 5, 'did not wrap')
-coauthor.jump(-1)
+press('[n')
 assert(api.nvim_win_get_cursor(0)[1] == 6, 'did not wrap backwards')
 
 -- 8. Resolved threads lose their marks; :Coauthor toggles the buffer.
@@ -103,9 +108,11 @@ idle()
 assert(marks(buf).t1 == nil and marks(buf).t2 ~= nil, vim.inspect(marks(buf)))
 vim.cmd('Coauthor')
 assert(not coauthor.enabled(buf) and next(marks(buf)) == nil)
+assert(vim.fn.maparg(']n', 'n') == '' and vim.fn.maparg('[n', 'n') == '', 'navigation outlived :Coauthor off')
 vim.cmd('Coauthor')
 idle()
 assert(coauthor.enabled(buf) and marks(buf).t2.first == 6, vim.inspect(marks(buf)))
+assert(vim.fn.maparg(']n', 'n', false, true).buffer == 1, 'navigation not restored')
 
 -- 9. Other filetypes: enabled only when they already have threads.
 local plain = temp .. '/docs/notes.txt'
@@ -113,8 +120,7 @@ write(plain, { 'alpha', 'beta' })
 vim.cmd.edit(plain)
 idle()
 assert(not coauthor.enabled(0), 'a .txt without threads was enabled')
--- Without coauthor, ]t is :tnext again; with no tags that is a message, not an error.
-coauthor.jump(1)
+assert(vim.fn.maparg(']n', 'n') == '', ']n is mapped where coauthor is off')
 vim.cmd('bwipeout')
 cli('comment', plain, '--lines', '2-2', 'about beta')
 vim.cmd.edit(plain)
@@ -131,4 +137,4 @@ idle()
 assert(#cli('list', doc_path).threads == 2)
 assert(#api.nvim_buf_get_extmarks(0, api.nvim_create_namespace('coauthor'), 0, -1, {}) == 1)
 
-H.finish('PASS: coauthor comments, replies, buffer anchor text, line-number marks, sync on :w, ]t/[t, toggle, auto-enable and missing binary.')
+H.finish('PASS: coauthor comments, replies, buffer anchor text, line-number marks, sync on :w, ]n/[n, toggle, auto-enable and missing binary.')
