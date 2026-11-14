@@ -99,7 +99,8 @@ documentation. Tests use temporary repositories for their review data.
 | `lsp/jsonls.lua` | Native JSON server configuration and schema mappings |
 | `lua/config/lsp_servers.lua` | Enabled language servers, install steps, and executable resolution |
 | `lua/config/treesitter.lua` | Installed parsers, their filetypes, and highlighting start |
-| `scripts/install_deps.lua` | Cross-platform language-server and parser installer (`make deps`) |
+| `scripts/install_deps.lua` | Cross-platform installer for language servers, parsers, and the coauthor CLI (`make deps`) |
+| `coauthor/` | Rust CLI that owns coauthor threads files ([design](docs/coauthor.md)) |
 | `scripts/run_tests.lua` | Cross-platform test runner behind the `make` test targets |
 | `nvim-pack-lock.json` | Committed plugin versions |
 | `mise.toml` | Toolchains this config's language servers need (.NET SDK, Cargo) |
@@ -118,7 +119,8 @@ make test NVIM=bin/nvim-config
 ```
 
 On Windows, run the same suites with `nvim -l scripts/run_tests.lua`, optionally
-naming suites (`check`, `config`, `review`, `lsp`). CI runs every suite on Linux, macOS,
+naming suites (`check`, `coauthor`, `config`, `review`, `lsp`). The `coauthor`
+suite runs the CLI's Cargo tests and needs Cargo. CI runs every suite on Linux, macOS,
 and Windows.
 
 `make test` checks the inventory, loaded editor settings, and review behavior,

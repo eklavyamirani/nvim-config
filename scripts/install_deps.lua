@@ -1,4 +1,5 @@
--- Install language servers and Treesitter parsers into stdpath('data'):
+-- Install language servers and Treesitter parsers into stdpath('data'), and the
+-- coauthor CLI with Cargo:
 -- `nvim -l scripts/install_deps.lua [target...]`.
 -- Runs through Neovim so it behaves the same on Windows, and honours XDG_DATA_HOME/NVIM_APPNAME.
 local root = vim.fs.dirname(vim.fs.dirname(vim.fs.abspath(debug.getinfo(1, 'S').source:sub(2))))
@@ -23,7 +24,16 @@ targets.parsers = {
   end,
 }
 
-local names = #arg > 0 and arg or vim.tbl_keys(servers)
+-- The coauthor CLI goes to Cargo's bin directory, on PATH, because agents run it
+-- from their shell by name.
+targets.coauthor = {
+  requires = { 'cargo' },
+  install = function(run)
+    run({ 'cargo', 'install', '--path', root .. '/coauthor', '--locked' }, 900000)
+  end,
+}
+
+local names = #arg > 0 and arg or vim.list_extend(vim.tbl_keys(servers), { 'coauthor' })
 table.sort(names)
 
 -- `timeout` bounds commands that could stall indefinitely, so a wedged child

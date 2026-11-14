@@ -17,6 +17,9 @@ CLI on PATH, and it installs the languages listed in `lua/config/treesitter.lua`
 A buffer whose parser is still missing simply opens without highlighting, and
 Treesitter starts as soon as the parser lands.
 
+The same command builds the [coauthor CLI](../coauthor/README.md) with
+`cargo install` (target `coauthor`), so it needs the Cargo toolchain `mise.toml` pins.
+
 Pass server names (e.g. `nvim -l scripts/install_deps.lua csharp_ls`) to install
 only some. Prerequisites must already be on PATH: Python 3 for BasedPyright, the
 .NET 10 SDK for csharp-ls, npm for the TypeScript and JSON servers, and `curl` plus `gzip`

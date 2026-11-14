@@ -1,7 +1,7 @@
 # Coauthor threads — design record
 
-Status: **design, not implemented.** All open questions are decided; ready for
-implementation.
+Status: **being implemented** (#20). Details the design left open are recorded
+in [Implementation notes](#implementation-notes).
 
 ## Goal
 
@@ -334,6 +334,45 @@ fuzzy drift matching.
 - An event is ignored when the threads file matches the state Neovim's own last
   CLI call returned.
 - `FocusGained` → `:checktime` as a fallback for a missed event.
+
+## Implementation notes
+
+Small details decided during implementation, within the design above.
+
+### CLI foundation (#22)
+
+- **Crate:** `coauthor/`, a library (`format`, `store`, `cli`, `sha256`
+  modules) plus a thin binary, so tests can drive storage directly. Edition
+  2024, `rust-version = 1.89` (the first with `std::fs::File::lock`).
+- **Dependencies:** `clap` (derive) for subcommands and `--help`, `serde_json`
+  for `--json` and `sync --anchors`. Locking uses std's `File::lock`, so no
+  locking crate; SHA-256 is a 60-line module checked against FIPS vectors, so no
+  hashing crate.
+- **Lock:** one `.lock` file in the state directory, not a lock on each threads
+  file. Renaming over a file another handle has locked fails on Windows, and a
+  single lock also makes `mv` (two files) atomic. Writes are tiny, so
+  serializing across documents costs nothing.
+- **Name hash:** the first 8 hex digits of the SHA-256 of the canonical path. A
+  file whose `doc:` header names another path is a collision and is refused,
+  never overwritten.
+- **Canonical path:** `std::fs::canonicalize` of the deepest existing ancestor
+  plus the remaining components, with Windows `\\?\` prefixes stripped, so
+  `rm` and `mv` work on documents that no longer exist.
+- **State directory:** created by every command (including read-only ones), so
+  it exists before a sandboxed agent first needs it. The first threads file is
+  created by the first write.
+- **Header:** `round: none` until the first submit.
+- **Thread flags:** `· drifted` is stored in the header, because a drift must stay
+  unconfirmed until accepted, and the ladder alone would report a drifted anchor
+  as `anchored` on the next run.
+- **`was:`** is one `was: ` line per old anchor line.
+- **Message text:** CRLF becomes LF and trailing blank lines are dropped.
+  Continuation lines that would read as structure are stored with a `\` prefix.
+- **Unparseable sections** (a hand-edited header, a thread without `>` lines,
+  stray text) are kept verbatim; their `tN` ids are never reused.
+- **Housekeeping:** `rm` of a document without threads succeeds and says so;
+  `prune` skips (and reports) files it cannot parse; `mv` refuses to overwrite
+  the target's threads; `prune --dry-run` lists without deleting.
 
 ## Findings from the mockups
 

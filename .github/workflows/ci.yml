@@ -61,9 +61,24 @@ jobs:
           dotnet-version: 10.0.x
       # Keep going after a failed step, so one broken step reports itself
       # instead of skipping the setup and suites behind it.
-      - name: Install language servers
+      - name: Install the Rust toolchain pinned by mise.toml
+        if: ${{ !cancelled() }}
+        run: |
+          rust=$(sed -n 's/^rust = "\(.*\)"$/\1/p' mise.toml)
+          rustup toolchain install "$rust" --profile minimal --component clippy,rustfmt
+          rustup default "$rust"
+          cargo --version
+      - name: Install language servers and the coauthor CLI
         if: ${{ !cancelled() }}
         run: nvim -l scripts/install_deps.lua
+      - name: Lint the coauthor CLI
+        if: ${{ !cancelled() && runner.os == 'Linux' && matrix.neovim == 'nightly' }}
+        run: |
+          cargo fmt --manifest-path coauthor/Cargo.toml --check
+          cargo clippy --manifest-path coauthor/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Test the coauthor CLI
+        if: ${{ !cancelled() }}
+        run: nvim -l scripts/run_tests.lua coauthor
       - name: Install parser compiler
         if: ${{ !cancelled() }}
         run: $([ "$RUNNER_OS" = Linux ] && echo sudo) npm install --global tree-sitter-cli@0.27.0
