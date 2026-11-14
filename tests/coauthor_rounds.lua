@@ -58,7 +58,9 @@ assert(not vim.bo[buf].modified and vim.fn.readfile(path)[2] == 'Unsaved intro.'
 local state = cli('list', path)
 assert(state.round == 'open', state.round)
 assert(vim.deep_equal(H.thread(state, 't1').stored, { 4, 4 }), 'anchors were not synced before submit')
+-- Any spelling of the path finds the baseline (8.3 names, /var -> /private/var).
 local baseline = coauthor.baseline_path(path)
+assert(baseline == coauthor.baseline_path(api.nvim_buf_get_name(buf)))
 assert(vim.deep_equal(vim.fn.readfile(baseline), vim.fn.readfile(path)), 'baseline differs from the saved document')
 assert(not vim.bo[buf].modifiable and vim.bo[buf].readonly, 'buffer not locked')
 local prompt = table.concat(copied, '\n')

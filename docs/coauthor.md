@@ -459,7 +459,7 @@ Small details decided during implementation, within the design above.
 - **Submit** refuses when no thread is awaiting ai or a round is already open.
   `:w` runs first; its `BufWritePost` sync is queued ahead of `round open`, so
   the order is the design's. The baseline is a byte copy of the saved file at
-  `stdpath('state')/coauthor-baselines/<sha256(path)[1..16]>-<name>`, so the
+  `stdpath('state')/coauthor-baselines/<sha256(realpath)[1..16]>-<name>`, so the
   diff works after a restart.
 - **Prompt:** one line, with the path relative to Neovim's cwd, yanked to `+`
   when a clipboard provider exists, else `"`:

@@ -696,10 +696,13 @@ end
 
 -- ---------------------------------------------------------------- rounds
 
+-- Keyed by the real path, so every spelling of the file (symlinks, Windows
+-- 8.3 short names) finds the same baseline.
 local function baseline_path(path)
   local dir = vim.fn.stdpath('state') .. '/coauthor-baselines'
   vim.fn.mkdir(dir, 'p')
-  return ('%s/%s-%s'):format(dir, vim.fn.sha256(path):sub(1, 16), vim.fs.basename(path))
+  local real = vim.uv.fs_realpath(path) or path
+  return ('%s/%s-%s'):format(dir, vim.fn.sha256(real):sub(1, 16), vim.fs.basename(path))
 end
 M.baseline_path = baseline_path
 
@@ -807,7 +810,8 @@ function M.submit(opts)
   -- The write's BufWritePost sync is queued ahead of this.
   M.run({ 'round', doc.path, 'open' }, function(snapshot)
     apply(buf, snapshot)
-    vim.uv.fs_copyfile(doc.path, baseline_path(doc.path))
+    local copied, err = vim.uv.fs_copyfile(doc.path, baseline_path(doc.path))
+    if not copied then notify('could not save the review baseline: ' .. tostring(err), vim.log.levels.WARN) end
     doc.round = { before = ai_counts(doc.threads) }
     lock(buf, doc)
     local prompt = M.prompt(doc.path)
