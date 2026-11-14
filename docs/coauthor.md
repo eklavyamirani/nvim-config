@@ -117,6 +117,12 @@ document or sidecar, each thread walks a resolution ladder:
   - From the side split: `r` on a thread → jump to document → select → `<CR>`.
 - Re-anchoring replaces the snapshot; the old one is kept as a `was:` line until
   the thread is resolved.
+- When re-anchoring an orphan whose last AI reply carries `{edited L-L}`, the
+  picker pre-selects that range as the suggestion. The agent often says where
+  the text went even when it forgets to update the anchor. Nothing moves until
+  the user confirms.
+- An orphan is always shown as `was line N`, never as sitting at line N: after
+  edits, line N may belong to another thread.
 
 ### Orphan discoverability
 
@@ -128,7 +134,7 @@ the comment. Triage is re-anchor, resolve, or ignore.
 | `mini.notify` | on transitions only: "2 orphaned, 1 drifted · `<leader>tl`" | on |
 | Side split | pinned **Needs anchor** section at the top with `was:` snapshots | on |
 | Lualine | `awaiting me 2 · awaiting ai 1 · orphan 1`, foreground only, coauthor buffers only | on |
-| Quickfix | `[orphan] t3: <snapshot>` at last-known line | on |
+| Quickfix | `[orphan] t3 · was line 17: <snapshot>` at last-known line | on |
 | In-buffer eol | dim `· orphan t3` at last-known line | **off** |
 
 Notify also fires when threads flip to awaiting me: "3 replies · 1 edit".
@@ -217,6 +223,9 @@ render-markdown configured like this repo) surfaced these. Open until decided.
    directory (see Change detection).
 5. **An orphan's last-known line can be another thread's line.** t3 orphaned at
    line 17, where t2 is anchored, so both quickfix entries point at line 17.
+   The agent's reply on t3 said `{edited 18}`, the right new location.
+   *Decided:* label orphans `was line N`, and suggest the reply's edited range
+   when re-anchoring (see Anchoring and re-anchoring).
 6. **mini.notify's top-right popup covers the top of the side split**, which is
    where the "Needs anchor" section lives. *Decided:* keep notify every round;
    the overlap lasts a few seconds.
