@@ -5,7 +5,9 @@ local python = vim.fn.executable('python3') == 1 and 'python3' or 'python'
 
 local suites = {
   { 'check', { python, 'scripts/check_config.py' } },
+  -- Builds the CLI that the Neovim coauthor tests below drive.
   { 'coauthor', { 'cargo', 'test', '--manifest-path', 'coauthor/Cargo.toml', '--locked' } },
+  { 'coauthor', 'NONE', 'tests/coauthor.lua' },
   { 'config', 'init.lua', 'tests/config.lua' },
   { 'config', 'init.lua', 'tests/csharp_lsp.lua' },
   { 'config', 'init.lua', 'tests/treesitter.lua' },

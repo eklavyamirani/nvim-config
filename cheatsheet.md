@@ -417,6 +417,27 @@ Inside diffview the header resolves to the real file path, with a `(staged)` or 
 
 ---
 
+## Coauthor threads
+
+Keywords: comment, review, document, thread, agent, copilot, claude, coauthor.
+
+Comment on a document without editing it, hand the comments to an agent, and
+converse per thread. Comments live outside the repository; the `coauthor` CLI
+(installed by `make deps`) stores them. Markdown files, and any file that
+already has threads, are on automatically. Design: `docs/coauthor.md`.
+
+| Key / Command | Action |
+| --- | --- |
+| `<leader>tc` | Comment on the line or selection (new thread); inside a thread, reply to it |
+| `]t` / `[t` | Next / previous thread (`:tnext` / `:tprevious` where coauthor is off) |
+| `:Coauthor` | Turn threads on or off for this buffer |
+
+A commented line's number is coloured by whose turn it is: peach awaiting you,
+blue awaiting the agent. A dim `t1` at the end of the first line names the
+thread. `:w` saves where anchors moved to.
+
+---
+
 ## Folds (show / hide collapsed lines)
 
 Keywords: fold, unfold, collapse, expand, diff folds, show full file.

@@ -74,7 +74,10 @@
       "<leader>ax": "Review: close support panes",
       "<leader>aE": "Review: explain with read tools",
       "<leader>aA": "Review: ask about the current line (read tools)",
-      "<leader>aQ": "Review: ask a follow-up with read tools"
+      "<leader>aQ": "Review: ask a follow-up with read tools",
+      "<leader>tc": "Coauthor: comment on line, or reply in a thread",
+      "]t": "Coauthor: next thread (else :tnext)",
+      "[t": "Coauthor: previous thread (else :tprevious)"
     },
     "x": {
       "<leader>ay": "AI: yank selection to clipboard",
@@ -82,7 +85,8 @@
       "<leader>ae": "Review: explain beside the diff",
       "<leader>ap": "Review: pin selected context",
       "<leader>aE": "Review: explain with read tools",
-      "<leader>aA": "Review: ask about selected code (read tools)"
+      "<leader>aA": "Review: ask about selected code (read tools)",
+      "<leader>tc": "Coauthor: comment on selection"
     }
   },
   "buffer_keymaps": {
@@ -93,12 +97,13 @@
       "<C-t>": "Diffview LSP: return from source jump"
     }
   },
-  "autocmd_events": ["LspAttach", "VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User"],
+  "autocmd_events": ["LspAttach", "VimEnter", "FileType", "BufWritePost", "BufReadPost", "BufEnter", "BufLeave", "VimLeavePre", "User", "ColorScheme", "BufWipeout"],
   "behaviors": {
     "tests/csharp_lsp.lua": "Native C# activation, solution/project roots, protocol language and parser mapping",
     "tests/lsp_servers.lua": "Installed language-server executables per platform (Windows .exe/Scripts) and C# project-root cwd",
     "tests/treesitter.lua": "Parser/filetype mapping, missing-parser guard, and Treesitter start",
     "tests/config.lua": "Startup, options, mappings, plugins, commands, autocmds, and AI clipboard formatting",
+    "tests/coauthor.lua": "Coauthor comments and replies, buffer anchor text, line-number marks, sync on :w, navigation, toggle, auto-enable and missing binary",
     "tests/review_context.lua": "Explanation panes, exact selections, private notes, request ordering, and recovery",
     "tests/review_route.lua": "Committed-diff ordering, marks, persistence, migration, and assistant routing",
     "tests/review_tree.lua": "Tree/list rendering, nested marks, folding, and navigation",
