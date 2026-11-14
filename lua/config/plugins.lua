@@ -33,6 +33,7 @@ local function setup(name, opts)
 end
 
 require('config.review_context').setup()
+require('config.coauthor').setup()
 setup('mini.files')
 setup('mini.notify')
 local function notification_history()

@@ -406,6 +406,30 @@ Small details decided during implementation, within the design above.
   equally near matches the earlier wins; a stored drift stays `drifted` while
   the text is found.
 
+### Neovim client (#24)
+
+- **Module:** `lua/config/coauthor.lua`, set up from `plugins.lua` like the
+  review-context module. Keymaps are global; `<leader>tc` turns coauthor on for
+  the buffer when it is off.
+- **One CLI call at a time:** calls queue, so snapshots apply in the order their
+  writes happened.
+- **Missing binary:** the first user-facing use (opening Markdown, `:Coauthor`,
+  `<leader>tc`) shows one warning per session; the background `coauthor path`
+  check on other files is silent.
+- **Marks:** one extmark per thread spans the anchor (`invalidate`, so deleted
+  text drops it), with `number_hl_group` (`CoauthorAwaitingMe` peach,
+  `CoauthorAwaitingAi` blue, from the catppuccin palette) and the id as `eol`
+  virtual text (`CoauthorId`, overlay0). Resolved and orphaned threads get no
+  mark.
+- **Positions:** extmarks are the truth while the buffer is open. Snapshots
+  only recolour existing marks; marks are rebuilt from the CLI's resolved lines
+  on load and reload.
+- **New comment:** a provisional extmark follows the selection while the prompt
+  (`vim.ui.input`, one line) and the CLI call are pending; anchor text is passed
+  as `--anchor-text=…` and the message after `--`, so leading dashes are safe.
+- **`]t` / `[t`:** wrap when `'wrapscan'` is set; in buffers without coauthor
+  they run `:tnext` / `:tprevious`, Neovim's default for these keys.
+
 ## Findings from the mockups
 
 ### Second mockup (final design, recording above)

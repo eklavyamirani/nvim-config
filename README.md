@@ -91,6 +91,7 @@ documentation. Tests use temporary repositories for their review data.
 | `lua/config/plugins.lua` | Plugin declarations/setup, Diffview options, notification history |
 | `lua/config/review_route.lua` | Review groups, ordering, marks, trees, and reading positions |
 | `lua/config/review_context.lua` | Captured source, assistant requests, conversation panes, private persistence |
+| `lua/config/coauthor.lua` | Coauthor threads: commenting, anchor marks, and calls to the `coauthor` CLI |
 | `lua/config/diffview_lsp.lua` | Commit-specific Python definition, hover, and references |
 | `lsp/csharp_ls.lua` | Native C# server configuration |
 | `lsp/basedpyright.lua` | Native Python server configuration |
