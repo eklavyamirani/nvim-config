@@ -11,7 +11,7 @@ local targets = vim.tbl_extend('error', {}, servers)
 -- session never opens a buffer whose parser is still compiling. They need the
 -- plugins, so install them from a Neovim that loads the full configuration.
 -- Not part of the default set: CI installs the Treesitter CLI after the
--- servers, and its test runs install the parsers they need themselves.
+-- servers, then runs this target on its own.
 targets.parsers = {
   requires = { 'tree-sitter' },
   install = function(run)

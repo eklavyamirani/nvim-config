@@ -105,10 +105,15 @@ jobs:
           path: |
             .ci/data/nvim/site
             .ci/data/nvim-data/site
-          key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('nvim-pack-lock.json', 'lua/config/plugins.lua') }}
-      - name: Install locked plugins
+          # A hit is never re-saved, so the key must change whenever the wanted parsers do.
+          key: nvim-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('nvim-pack-lock.json', 'lua/config/plugins.lua', 'lua/config/treesitter.lua') }}
+      # One blocking run: a `+qa` startup would begin the parser downloads and
+      # orphan them. Without this, every full-config Neovim in the suites starts
+      # its own download and compile of any missing parser, races the others on
+      # the cache dir, and orphans the children when the test quits.
+      - name: Install locked plugins and parsers
         if: ${{ !cancelled() }}
-        run: nvim --headless --cmd "set runtimepath^=$GITHUB_WORKSPACE" -u init.lua +qa
+        run: nvim -l scripts/install_deps.lua parsers
       - name: Check configuration specification
         if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua check
@@ -118,6 +123,11 @@ jobs:
       - name: Exercise review customizations
         if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua review
+      - name: Show Windows process counts
+        if: ${{ always() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          Get-Process | Group-Object ProcessName | Sort-Object Count -Descending | Select-Object -First 15 Count,Name | Format-Table -AutoSize
       - name: Exercise language servers
         if: ${{ !cancelled() }}
         run: nvim -l scripts/run_tests.lua lsp
